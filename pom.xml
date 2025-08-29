@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>io.github.xiajuan96</groupId>
+    <artifactId>d2k</artifactId>
+    <version>1.0.0-SNAPSHOT</version>
+    <packaging>pom</packaging>
+
+    <name>d2k</name>
+    <description>D2K (Delay to Kafka) - Kafka延迟消息处理SDK。</description>
+    <url>https://github.com/xiajuan96/d2k</url>
+
+    <licenses>
+        <license>
+            <name>GNU Lesser General Public License v3.0</name>
+            <url>https://www.gnu.org/licenses/lgpl-3.0.html</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
+
+    <modules>
+        <module>d2k-client</module>
+        <module>d2k-test</module>
+    </modules>
+
+    <scm>
+        <url>https://github.com/xiajuan96/d2k</url>
+        <connection>scm:git:https://github.com/xiajuan96/d2k.git</connection>
+        <developerConnection>scm:git:https://github.com/xiajuan96/d2k.git</developerConnection>
+    </scm>
+
+    <developers>
+        <developer>
+            <name>xiajuan96</name>
+        </developer>
+    </developers>
+
+    <properties>
+        <maven.compiler.source>8</maven.compiler.source>
+        <maven.compiler.target>8</maven.compiler.target>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>org.apache.kafka</groupId>
+                <artifactId>kafka-clients</artifactId>
+                <version>2.4.0</version>
+            </dependency>
+            <dependency>
+                <groupId>io.github.xiajuan96</groupId>
+                <artifactId>d2k-consumer</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.github.xiajuan96</groupId>
+                <artifactId>d2k-producer</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.github.xiajuan96</groupId>
+                <artifactId>d2k-client</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+
+</project>

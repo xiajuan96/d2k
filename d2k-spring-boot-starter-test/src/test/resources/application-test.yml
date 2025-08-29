@@ -1,0 +1,40 @@
+# D2K 测试环境配置
+d2k:
+  # 生产者配置
+  producer:
+    bootstrap-servers: localhost:9092
+    client-id: test-producer
+    key-serializer: org.apache.kafka.common.serialization.StringSerializer
+    value-serializer: org.apache.kafka.common.serialization.StringSerializer
+    retries: 3
+    batch-size: 16384
+    buffer-memory: 33554432
+    topic-delays:
+      test-topic: 5000          # 测试主题延迟 5 秒
+      another-topic: 3000       # 另一个主题延迟 3 秒
+      notification-topic: 1000  # 通知主题延迟 1 秒
+  
+  # 消费者配置
+  consumer:
+    bootstrap-servers: localhost:9092
+    group-id: test-consumer-group
+    client-id: test-consumer
+    key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+    value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+    enable-auto-commit: true
+    session-timeout-ms: 30000
+    heartbeat-interval-ms: 3000
+    max-poll-records: 500
+    fetch-max-wait-ms: 500
+    concurrency: 1
+    topic-delays:
+      test-topic: 5000          # 测试主题默认延迟 5 秒
+      another-topic: 3000       # 另一个主题默认延迟 3 秒
+      notification-topic: 1000  # 通知主题默认延迟 1 秒
+    # 异步处理配置（测试环境关闭异步处理以简化调试）
+    async-processing-enabled: false
+    async-core-pool-size: 2
+    async-maximum-pool-size: 4
+    async-keep-alive-time: 60
+    async-queue-capacity: 100
+    async-rejected-execution-policy: "CALLER_RUNS"
