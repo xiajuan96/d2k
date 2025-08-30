@@ -1,5 +1,0 @@
-# Auto Configure
-org.springframework.boot.autoconfigure.EnableAutoConfiguration=\
-com.d2k.spring.boot.autoconfigure.config.D2kAutoConfiguration,\
-com.d2k.spring.boot.autoconfigure.config.D2kProducerAutoConfiguration,\
-com.d2k.spring.boot.autoconfigure.config.D2kConsumerAutoConfiguration
