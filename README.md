@@ -302,6 +302,34 @@ for (ProducerRecord<String, String> record : records) {
 - **连接池复用**：在同一应用中复用D2K客户端实例
 - **内存监控**：监控延迟消息队列的内存使用情况
 
+## 版本管理
+
+本项目使用Maven Versions Plugin进行版本管理，推荐使用以下命令统一更新所有模块版本：
+
+### 更新所有模块版本
+
+更新根项目和所有子模块的版本，包括独立管理版本的模块：
+
+**使用示例**：
+```bash
+# 第一步：更新根项目（这会同时更新d2k-test的父版本引用）
+mvn versions:set -DnewVersion=1.0.2 -N
+
+# 第二步：更新d2k-client独立模块
+mvn versions:set -DnewVersion=1.0.2 -pl d2k-client
+
+# 第三步：提交所有更改
+mvn versions:commit
+```
+
+### 版本管理最佳实践
+
+1. **开发阶段**：使用SNAPSHOT版本（如 `1.1.0-SNAPSHOT`）
+2. **发布阶段**：使用正式版本（如 `1.1.0`）
+3. **统一版本**：推荐使用方式3同时更新所有模块版本，保持版本一致性
+4. **回滚操作**：如果需要撤销版本更改，可以使用 `mvn versions:revert`
+5. **备份文件**：版本更新会自动创建备份文件（.versionsBackup），提交后自动删除
+
 ## 常见问题
 
 ### Q: 延迟消息的精度如何？

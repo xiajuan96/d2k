@@ -6,7 +6,7 @@
 
     <groupId>io.github.xiajuan96</groupId>
     <artifactId>d2k</artifactId>
-    <version>1.0.0</version>
+    <version>1.0.1-SNAPSHOT</version>
     <packaging>pom</packaging>
 
     <name>d2k</name>
@@ -69,5 +69,21 @@
         </dependencies>
     </dependencyManagement>
 
+    <build>
+        <plugins>
+            <!-- Maven Versions Plugin - 用于版本管理 -->
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>versions-maven-plugin</artifactId>
+                <version>2.16.2</version>
+                <configuration>
+                    <!-- 生成备份文件 -->
+                    <generateBackupPoms>true</generateBackupPoms>
+                    <!-- 允许SNAPSHOT版本 -->
+                    <allowSnapshots>true</allowSnapshots>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
 
 </project>

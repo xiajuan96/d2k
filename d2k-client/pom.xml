@@ -6,7 +6,7 @@
 
     <groupId>io.github.xiajuan96</groupId>
     <artifactId>d2k-client</artifactId>
-    <version>1.0.0</version>
+    <version>1.0.1-SNAPSHOT</version>
     <packaging>jar</packaging>
 
     <name>d2k-client</name>
