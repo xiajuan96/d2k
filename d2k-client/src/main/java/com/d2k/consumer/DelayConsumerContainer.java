@@ -18,7 +18,6 @@
  */
 package com.d2k.consumer;
 
-import org.apache.kafka.common.serialization.Deserializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -37,8 +36,6 @@ public class DelayConsumerContainer<K, V> {
     
     private final int concurrency;
     private final Map<String, Object> configs;
-    private final Deserializer<K> keyDeserializer;
-    private final Deserializer<V> valueDeserializer;
     private final Collection<String> topics;
     private final DelayItemHandler<K, V> delayItemHandler;
     private final AsyncProcessingConfig asyncProcessingConfig;
@@ -47,15 +44,11 @@ public class DelayConsumerContainer<K, V> {
 
     public DelayConsumerContainer(int concurrency,
                                   Map<String, Object> configs,
-                                  Deserializer<K> keyDeserializer,
-                                  Deserializer<V> valueDeserializer,
                                   Collection<String> topics,
                                   DelayItemHandler<K, V> delayItemHandler,
                                   AsyncProcessingConfig asyncProcessingConfig) {
         this.concurrency = Math.max(1, concurrency);
         this.configs = configs;
-        this.keyDeserializer = keyDeserializer;
-        this.valueDeserializer = valueDeserializer;
         this.topics = topics;
         this.delayItemHandler = delayItemHandler;
         this.asyncProcessingConfig = asyncProcessingConfig != null ? asyncProcessingConfig : AsyncProcessingConfig.createSyncConfig();
@@ -66,11 +59,9 @@ public class DelayConsumerContainer<K, V> {
      */
     public DelayConsumerContainer(int concurrency,
                                   Map<String, Object> configs,
-                                  Deserializer<K> keyDeserializer,
-                                  Deserializer<V> valueDeserializer,
                                   Collection<String> topics,
                                   DelayItemHandler<K, V> delayItemHandler) {
-        this(concurrency, configs, keyDeserializer, valueDeserializer, topics, delayItemHandler, AsyncProcessingConfig.createSyncConfig());
+        this(concurrency, configs, topics, delayItemHandler, AsyncProcessingConfig.createSyncConfig());
     }
 
     public void start() {
@@ -81,7 +72,7 @@ public class DelayConsumerContainer<K, V> {
         }
         executor = Executors.newFixedThreadPool(concurrency);
         for (int i = 0; i < concurrency; i++) {
-            DelayConsumerRunnable<K, V> r = new DelayConsumerRunnable<>(configs, keyDeserializer, valueDeserializer,
+            DelayConsumerRunnable<K, V> r = new DelayConsumerRunnable<>(configs,
                     topics, delayItemHandler, asyncProcessingConfig);
             workers.add(r);
             executor.submit(r);
