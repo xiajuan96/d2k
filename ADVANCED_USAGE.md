@@ -71,7 +71,44 @@ producer.send("payment-topic", 0, "pay-456", paymentData); // 自动延迟10秒
 
 ## 异步处理配置
 
-配置异步处理来提高吞吐量：
+异步处理模式适用于需要高吞吐量的场景，通过线程池并行处理延迟消息，避免单个消息的处理时间影响整体性能。
+
+### 配置参数说明
+
+通过`AsyncProcessingConfig`类配置异步处理参数：
+
+| 配置项 | 类型 | 默认值 | 说明 |
+|--------|------|--------|------|
+| `enabled` | Boolean | false | 是否启用异步处理 |
+| `corePoolSize` | Integer | 2 | 核心线程数 |
+| `maximumPoolSize` | Integer | 4 | 最大线程数 |
+| `keepAliveTime` | Long | 60 | 线程空闲时间（秒） |
+| `queueCapacity` | Integer | 100 | 任务队列长度 |
+| `rejectedExecutionPolicy` | Enum | CALLER_RUNS | 拒绝策略 |
+
+### 基本使用示例
+
+```java
+// 创建异步处理配置
+AsyncProcessingConfig asyncConfig = AsyncProcessingConfig.createAsyncConfig(
+    2,   // 核心线程数
+    4,   // 最大线程数
+    100  // 队列长度
+);
+
+// 创建延迟消息消费者容器（异步处理）
+DelayConsumerContainer<String, String> container = new DelayConsumerContainer<>(
+    3, // 3个消费线程
+    consumerProps,
+    Arrays.asList("my-topic"),
+    handler,
+    asyncConfig  // 异步处理配置
+);
+
+container.start();
+```
+
+### 高级配置示例
 
 ```java
 // 创建自定义异步处理配置

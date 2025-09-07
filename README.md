@@ -169,25 +169,7 @@ container.stop();
 
 ##### 异步处理模式
 
-```java
-// 创建异步处理配置
-AsyncProcessingConfig asyncConfig = AsyncProcessingConfig.createAsyncConfig(
-    2,   // 核心线程数
-    4,   // 最大线程数
-    100  // 队列长度
-);
-
-// 创建延迟消息消费者容器（异步处理）
-DelayConsumerContainer<String, String> container = new DelayConsumerContainer<>(
-    3, // 3个消费线程
-    consumerProps,
-    Arrays.asList("my-topic"),
-    handler,
-    asyncConfig  // 异步处理配置
-);
-
-container.start();
-```
+对于需要高吞吐量的场景，可以使用异步处理模式。详细配置和使用方式请参考 [高级使用指南 - 异步处理配置](ADVANCED_USAGE.md#异步处理配置)。
 
 ## 工作原理
 
@@ -337,16 +319,7 @@ D2K采用配置分离设计，将Kafka原生配置与D2K专有配置分开管理
 
 ### 异步处理配置
 
-通过`AsyncProcessingConfig`类配置异步处理参数：
-
-| 配置项 | 类型 | 默认值 | 说明 |
-|--------|------|--------|------|
-| `enabled` | Boolean | false | 是否启用异步处理 |
-| `corePoolSize` | Integer | 2 | 核心线程数 |
-| `maximumPoolSize` | Integer | 4 | 最大线程数 |
-| `keepAliveTime` | Long | 60 | 线程空闲时间（秒） |
-| `queueCapacity` | Integer | 100 | 任务队列长度 |
-| `rejectedExecutionPolicy` | Enum | CALLER_RUNS | 拒绝策略 |
+异步处理配置的详细参数说明和使用示例请参考 [高级使用指南 - 异步处理配置](ADVANCED_USAGE.md#异步处理配置)。
 
 ### 延迟配置
 
