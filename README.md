@@ -12,7 +12,7 @@ D2K（Delay to Kafka）是一个高性能的Kafka延迟消息处理SDK，提供�
 - **⏰ 定时消息发送**：支持指定具体时间点发送消息
 - **⚙️ 灵活的配置策略**：支持按主题配置默认延迟时间
 - **🔄 并发消费处理**：支持多线程并发消费延迟消息
-- **📦 统一客户端API**：提供D2kClient统一客户端，简化使用
+
 - **🎯 精确时间控制**：基于优先级队列实现精确的延迟控制
 - **🔧 异步处理支持**：支持同步和异步两种消息处理模式
 - **📊 流量控制**：内置队列容量管理和分区暂停机制
@@ -49,56 +49,7 @@ implementation 'io.github.xiajuan96:d2k-client:1.0.0'
 
 ## 快速开始
 
-### 方式一：使用统一客户端（推荐）
-
-```java
-import com.d2k.D2kClient;
-import com.d2k.consumer.DelayItemHandler;
-import org.apache.kafka.common.serialization.StringDeserializer;
-
-// 创建生产者配置
-Map<String, Object> producerProps = new HashMap<>();
-producerProps.put("bootstrap.servers", "localhost:9092");
-producerProps.put("key.serializer", "org.apache.kafka.common.serialization.StringSerializer");
-producerProps.put("value.serializer", "org.apache.kafka.common.serialization.StringSerializer");
-
-// 创建消费者配置
-Map<String, Object> consumerConfigs = new HashMap<>();
-consumerConfigs.put("bootstrap.servers", "localhost:9092");
-consumerConfigs.put("group.id", "my-group");
-consumerConfigs.put("key.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
-consumerConfigs.put("value.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
-consumerConfigs.put("auto.offset.reset", "earliest");
-
-// 创建消息处理器
-DelayItemHandler<String, String> handler = item -> {
-    System.out.printf("处理延迟消息: topic=%s, key=%s, value=%s%n",
-            item.getRecord().topic(), item.getRecord().key(), item.getRecord().value());
-};
-
-// 创建D2K统一客户端
-D2kClient<String, String> client = new D2kClient<>(
-    producerProps, consumerConfigs,
-    new StringDeserializer(), new StringDeserializer(),
-    Collections.singletonList("my-topic"),
-    handler, 3 // 3个消费线程
-);
-
-// 启动消费者
-client.startConsumer();
-
-// 发送延迟消息（5秒后消费）
-client.sendWithDelay("my-topic", "key1", "value1", 5000);
-
-// 发送定时消息（在指定时间点消费）
-long deliverAt = System.currentTimeMillis() + 10000; // 10秒后
-client.sendDeliverAt("my-topic", "key2", "value2", deliverAt);
-
-// 关闭客户端
-client.close();
-```
-
-### 方式二：分别使用生产者和消费者
+## 使用方式
 
 #### 发送延迟消息
 
@@ -262,8 +213,8 @@ DelayItemHandler<String, String> asyncHandler = item -> {
 
 ```java
 // 使用JSON序列化器处理复杂对象
-D2kClient<String, MyObject> client = new D2kClient<>(
-    producerProps, consumerProps,
+DelayConsumerContainer<String, MyObject> container = new DelayConsumerContainer<>(
+    consumerProps,
     new StringDeserializer(), new JsonDeserializer<>(MyObject.class),
     topics, handler, threadCount
 );
@@ -273,6 +224,8 @@ D2kClient<String, MyObject> client = new D2kClient<>(
 
 ```java
 // 批量发送多个延迟消息
+DelayProducer<String, String> producer = new DelayProducer<>(producerProps);
+
 List<ProducerRecord<String, String>> records = Arrays.asList(
     new ProducerRecord<>("topic1", "key1", "value1"),
     new ProducerRecord<>("topic1", "key2", "value2"),
@@ -281,8 +234,10 @@ List<ProducerRecord<String, String>> records = Arrays.asList(
 
 long delayMs = 5000; // 5秒延迟
 for (ProducerRecord<String, String> record : records) {
-    client.sendWithDelay(record.topic(), record.key(), record.value(), delayMs);
+    producer.sendWithDelay(record.topic(), record.key(), record.value(), delayMs);
 }
+
+producer.close();
 ```
 
 ## 最佳实践
@@ -298,8 +253,8 @@ for (ProducerRecord<String, String> record : records) {
 - **监控告警**：监控队列大小、处理延迟等关键指标
 
 ### 3. 资源管理
-- **及时关闭**：应用关闭时确保调用 `client.close()` 释放资源
-- **连接池复用**：在同一应用中复用D2K客户端实例
+- **及时关闭**：应用关闭时确保调用 `producer.close()` 和 `container.stop()` 释放资源
+- **连接池复用**：在同一应用中复用生产者和消费者实例
 - **内存监控**：监控延迟消息队列的内存使用情况
 
 ## 版本管理
