@@ -4,178 +4,70 @@
 [![Maven Central](https://img.shields.io/maven-central/v/io.github.xiajuan96/d2k-client.svg)](https://central.sonatype.com/artifact/io.github.xiajuan96/d2k-client)
 [![Java Version](https://img.shields.io/badge/Java-8%2B-blue.svg)](https://www.oracle.com/java/)
 
-D2K（Delay to Kafka）是一个高性能的Kafka延迟消息处理SDK，提供简单易用的API来发送和消费延迟消息。支持精确的时间控制、并发处理和灵活的配置选项。
+## 什么是 D2K？
 
-## 功能特点
+D2K（Delay to Kafka）是一个专注于 **Kafka 延迟消息处理** 的轻量级 Java SDK。与传统的延迟队列方案不同，D2K 采用创新的 **消费端延迟处理** 架构，通过在消费者端实现精确的时间控制，为基于 Kafka 的分布式系统提供高性能、高精度的延迟消息处理能力。
 
-- **🚀 延迟消息发送**：支持指定延迟时间（毫秒）发送消息到Kafka
-- **⏰ 定时消息发送**：支持指定具体时间点发送消息到Kafka
-- **⏳ 延迟消息消费**：从Kafka消费消息并在指定时间后执行业务逻辑
-- **🎯 毫秒级精度**：支持毫秒级的延迟时间控制，满足精确定时需求
-- **🔄 灵活处理模式**：支持同步和异步两种消息处理模式
-- **📊 智能流控**：自动管理队列容量，防止内存溢出和系统过载
+### 核心定位
 
-## 核心技术特性
+- **延迟消息处理专家**：专门解决 Kafka 生态中的延迟消息处理需求
+- **消费端延迟架构**：创新的消费端延迟处理模式，避免传统方案的复杂性
+- **企业级可靠性**：提供毫秒级精度控制和完整的一致性保障机制
+- **开箱即用**：简单的 API 设计，最小化集成成本
 
-- **基于Kafka的延迟消费**：专注于消费端延迟处理，而非生产端延迟发送
-- **毫秒级延迟精度控制**：支持精确到毫秒的延迟时间控制，满足高精度定时需求
-- **同一分区消息顺序性保证**：确保同一分区内消息按照正确的顺序进行处理
-- **双模式处理支持**：提供同步和异步两种消息处理模式，适应不同业务场景
-- **智能流控机制**：内置队列容量管理和背压控制，有效防止内存积压
+### 主要功能
 
-## 项目结构
+🚀 **延迟消息发送**：支持相对延迟时间和绝对时间两种发送模式  
+⏰ **精确延迟消费**：毫秒级精度的延迟消息处理能力  
+🎯 **双模式处理**：同步和异步两种处理模式，适应不同性能需求  
+🔄 **智能流控**：内置背压控制和队列管理，防止系统过载  
+📊 **顺序性保障**：确保同一分区内消息的处理顺序  
+⚡ **高性能架构**：双线程异步设计，消息拉取与处理完全解耦
 
-D2K项目包含以下模块：
+## 为什么选择 D2K？
 
-- **d2k-client**：客户端模块，提供延迟消息发送和延迟消息消费能力
-- **d2k-test**：测试模块
+### 🎯 技术优势对比
 
-## 系统要求
+| 特性 | D2K | 传统延迟队列 | Kafka 时间轮 | 数据库轮询 |
+|------|-----|-------------|-------------|------------|
+| **部署复杂度** | ⭐⭐⭐⭐⭐ 极简 | ⭐⭐ 复杂 | ⭐⭐⭐ 中等 | ⭐⭐⭐⭐ 简单 |
+| **精度控制** | ⭐⭐⭐⭐⭐ 毫秒级 | ⭐⭐⭐⭐ 秒级 | ⭐⭐⭐ 秒级 | ⭐⭐ 分钟级 |
+| **性能表现** | ⭐⭐⭐⭐⭐ 极高 | ⭐⭐⭐ 中等 | ⭐⭐⭐⭐ 高 | ⭐⭐ 低 |
+| **资源消耗** | ⭐⭐⭐⭐⭐ 极低 | ⭐⭐ 高 | ⭐⭐⭐ 中等 | ⭐⭐⭐ 中等 |
+| **扩展性** | ⭐⭐⭐⭐⭐ 优秀 | ⭐⭐⭐ 中等 | ⭐⭐⭐⭐ 良好 | ⭐⭐ 有限 |
+| **一致性保障** | ⭐⭐⭐⭐⭐ 强一致 | ⭐⭐⭐⭐ 最终一致 | ⭐⭐⭐ 中等 | ⭐⭐⭐⭐ 强一致 |
 
-- **Java版本**：JDK 8 或更高版本
-- **Kafka版本**：兼容 Apache Kafka 2.0+ 
-- **依赖管理**：Maven 3.6+ 或 Gradle 6.0+
+### 🚀 核心技术亮点
 
-## 安装
+#### 1. 创新的消费端延迟架构
+- **零额外存储**：无需 Redis、数据库等外部存储，直接基于 Kafka 实现
+- **原生集成**：与现有 Kafka 基础设施无缝集成，无需额外部署
+- **简化运维**：减少系统组件，降低运维复杂度和故障点
 
-### Maven
+#### 2. 毫秒级精度控制
+- **精确时间控制**：支持毫秒级延迟精度，满足高精度定时需求
+- **智能休眠算法**：自适应休眠策略（1ms-200ms），平衡精度与性能
+- **分段时间控制**：多级时间窗口，不同场景下的最优检查频率
 
-在你的 `pom.xml` 文件中添加以下依赖：
+#### 3. 双线程异步架构
+- **完全解耦设计**：消息拉取与延迟处理在独立线程中执行
+- **高性能队列**：基于 PriorityBlockingQueue 的无锁并发机制
+- **智能流控**：内置背压控制，防止内存溢出和系统过载
 
-```xml
-<dependency>
-    <groupId>io.github.xiajuan96</groupId>
-    <artifactId>d2k-client</artifactId>
-    <version>1.0.1-SNAPSHOT</version>
-</dependency>
-```
+#### 4. 企业级可靠性保障
+- **顺序性保证**：确保同一分区内消息按正确顺序处理
+- **一致性机制**：支持同步/异步两种模式的偏移量管理
+- **故障恢复**：完整的消费者重平衡和优雅关闭机制
 
-### Gradle
+## 🔧 核心工作原理
 
-在你的 `build.gradle` 文件中添加以下依赖：
+### 发送端工作原理
 
-```gradle
-implementation 'io.github.xiajuan96:d2k-client:1.0.1-SNAPSHOT'
-```
+  **消息标记**：生产者将延迟时间信息注入到 Kafka 消息头中
 
-### 核心依赖
+### 消费端工作原理
 
-D2K主要依赖以下组件：
-- Apache Kafka Clients
-- SLF4J 日志框架
-- JUnit 5（测试依赖）
-
-## 快速开始
-
-## 使用方式
-
-#### 发送延迟消息
-
-```java
-import com.d2k.producer.DelayProducer;
-
-// 创建Kafka生产者配置
-Map<String, Object> props = new HashMap<>();
-props.put("bootstrap.servers", "localhost:9092");
-props.put("key.serializer", "org.apache.kafka.common.serialization.StringSerializer");
-props.put("value.serializer", "org.apache.kafka.common.serialization.StringSerializer");
-
-// 创建延迟消息生产者
-DelayProducer<String, String> producer = new DelayProducer<>(props);
-
-// 发送延迟消息（5秒后消费）
-producer.sendWithDelay("my-topic", "key1", "value1", 5000);
-
-// 发送定时消息（在指定时间点消费）
-long deliverAt = System.currentTimeMillis() + 10000; // 10秒后
-producer.sendDeliverAt("my-topic", "key2", "value2", deliverAt);
-
-// 关闭生产者
-producer.close();
-```
-
-#### 使用配置化延迟生产者
-
-```java
-import com.d2k.producer.ConfigurableDelayProducer;
-import com.d2k.config.DelayConfig;
-import com.d2k.config.DelayConfigBuilder;
-
-// 创建延迟配置
-DelayConfig delayConfig = new DelayConfigBuilder()
-    .withTopicDelay("topic1", 5000L)  // topic1默认延迟5秒
-    .withTopicDelay("topic2", 3000L)  // topic2默认延迟3秒
-    .withTopicPartitionDelay("topic3", 0, 1000L)  // topic3分区0延迟1秒
-    .withTopicPartitionDelay("topic3", 1, 2000L)  // topic3分区1延迟2秒
-    .build();
-
-// 创建可配置延迟生产者
-ConfigurableDelayProducer<String, String> configurableProducer = 
-    new ConfigurableDelayProducer<>(props, delayConfig);
-
-// 发送消息（使用配置的默认延迟时间）
-configurableProducer.send("topic1", "key1", "value1");  // 自动延迟5秒
-configurableProducer.send("topic3", 0, "key2", "value2");  // 自动延迟1秒
-
-// 关闭生产者
-configurableProducer.close();
-```
-
-#### 消费延迟消息
-
-##### 基本用法（同步处理）
-
-```java
-import com.d2k.consumer.DelayConsumerContainer;
-import com.d2k.consumer.DelayItemHandler;
-import com.d2k.consumer.AsyncProcessingConfig;
-
-// 创建Kafka消费者配置
-Map<String, Object> consumerProps = new HashMap<>();
-consumerProps.put("bootstrap.servers", "localhost:9092");
-consumerProps.put("group.id", "my-group");
-consumerProps.put("key.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
-consumerProps.put("value.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
-consumerProps.put("auto.offset.reset", "earliest");
-
-// 添加D2K专有配置
-consumerProps.put("d2k.loop.total.ms", 200L);  // 循环总时间
-consumerProps.put("d2k.queue.capacity", 1000);  // 队列容量阈值
-
-// 创建消息处理器
-DelayItemHandler<String, String> handler = item -> {
-    System.out.printf("处理延迟消息: topic=%s, partition=%d, offset=%d, key=%s, value=%s%n",
-            item.getRecord().topic(),
-            item.getRecord().partition(),
-            item.getRecord().offset(),
-            item.getRecord().key(),
-            item.getRecord().value());
-};
-
-// 创建延迟消息消费者容器（同步处理）
-DelayConsumerContainer<String, String> container = new DelayConsumerContainer<>(
-    3, // 3个消费线程
-    consumerProps,
-    Arrays.asList("my-topic"),
-    handler
-);
-
-// 启动消费者
-container.start();
-
-// 关闭消费者
-container.stop();
-```
-
-##### 异步处理模式
-
-对于需要高吞吐量的场景，可以使用异步处理模式。详细配置和使用方式请参考 [高级使用指南 - 异步处理配置](ADVANCED_USAGE.md#异步处理配置)。
-
-## 工作原理
-
-D2K基于Kafka消息头机制实现延迟消息处理，核心原理如下：
-
-### 延迟消费核心流程
+D2K 的消费端采用创新的 **双线程异步架构**，通过消费端延迟处理实现高性能的延迟消息处理：
 
 ```mermaid
 flowchart TD
@@ -225,182 +117,153 @@ flowchart TD
     style Q fill:#ffeb3b
 ```
 
-### 核心业务流程解析
+#### 关键特性说明
 
-D2K延迟消费框架采用双线程架构设计，通过PriorityBlockingQueue实现消息拉取线程与延迟处理线程的完全解耦，确保系统的高性能和可扩展性。
+1. **双线程解耦**：消息拉取与延迟处理在不同线程中执行，互不阻塞
+2. **优先级队列**：基于到期时间自动排序，确保最早到期的消息优先处理
+3. **智能休眠**：根据消息到期时间动态调整检查频率，平衡精度与性能
+4. **一致性保障**：完整的偏移量管理机制，确保消息处理的可靠性
 
-#### 1. 工作原理：线程间异步解耦机制
+## 🚀 快速开始
 
-**PriorityBlockingQueue作为线程间缓冲队列**：
-- **消息缓冲**：DelayConsumerRunnable主线程将从Kafka拉取的消息封装为DelayItem对象，投递到PriorityBlockingQueue中，实现消息的暂存和缓冲
-- **异步处理**：TopicPartitionProcessor独立线程从队列中获取到期消息进行延迟处理，两个线程通过队列实现完全异步操作
-- **时间排序**：队列基于消息的resumeAtTimestamp自动排序，确保最早到期的消息优先被处理
-- **线程隔离**：Kafka消息拉取与延迟消息处理在不同线程中执行，避免业务处理延迟影响Kafka消费性能
+### 系统要求
 
-#### 2. 技术架构：核心实现原理
+- **Java版本**：JDK 8 或更高版本
+- **Kafka版本**：兼容 Apache Kafka 2.0+ 
+- **依赖管理**：Maven 3.6+ 或 Gradle 6.0+
 
-**双线程异步架构**：
-- **线程分离设计**：DelayConsumerRunnable负责Kafka消息拉取，TopicPartitionProcessor负责延迟处理，实现真正的异步解耦
-- **PriorityBlockingQueue桥接**：基于最小堆算法的优先级队列，提供O(log n)的插入和删除性能
-- **无锁并发机制**：利用队列内置的线程安全特性，避免显式锁竞争
+### 添加依赖
 
-**时间控制算法**：
-- **优先级排序**：DelayItem按resumeAtTimestamp自然排序，确保最早到期的消息优先处理
-- **自适应休眠**：根据队列状态和消息到期时间动态调整休眠策略（1ms-200ms），平衡CPU消耗与响应延迟
-- **分段时间控制**：采用多级休眠机制，在不同时间窗口内使用不同的检查频率
+#### Maven
 
-**一致性保障机制**：
-- **偏移量管理**：同步模式立即提交，异步模式通过nextExpectedOffset和completedItems维护提交顺序
-- **背压控制**：队列容量限制和分区暂停机制，防止内存溢出并提供流控能力
-- **故障恢复**：支持消费者重平衡和优雅关闭，确保消息处理的可靠性
+在你的 `pom.xml` 文件中添加以下依赖：
 
-## 技术实现细节
+```xml
+<dependency>
+    <groupId>io.github.xiajuan96</groupId>
+    <artifactId>d2k-client</artifactId>
+    <version>1.0.1-SNAPSHOT</version>
+</dependency>
+```
 
-### 消息延迟标记机制
-- **消息头解析**：从Kafka消息头中提取 `d2k-deliver-at` 时间戳，确定消息的预期处理时间
-- **时间计算**：支持绝对时间戳和相对延迟时间两种方式，通过extractResumeAtMillis方法统一处理
-- **DelayItem封装**：将ConsumerRecord封装为DelayItem对象，包含延迟时间、到期时间戳和原始消息记录
+#### Gradle
 
-### 双线程处理机制
-- **DelayConsumerRunnable主线程**：负责从Kafka拉取消息，解析延迟时间，将DelayItem投递到PriorityBlockingQueue
-- **TopicPartitionProcessor处理线程**：每个分区独立的处理线程，从队列中获取到期消息并执行业务逻辑
-- **队列管理**：基于PriorityBlockingQueue实现按时间排序，未到期消息等待，到期消息立即处理
-- **分区暂停**：当队列容量达到阈值时，暂停对应分区的消费，实现流控保护
+在你的 `build.gradle` 文件中添加以下依赖：
 
-### 精确时间控制
-- **优先级队列排序**：DelayItem基于resumeAtTimestamp自然排序，确保最早到期的消息优先处理
-- **分段休眠策略**：TopicPartitionProcessor采用最大200ms的分段休眠，平衡延迟精度和线程响应性
-- **毫秒级精度**：支持毫秒级的延迟时间控制，通过System.currentTimeMillis()进行时间比较
-- **同步异步模式**：支持同步处理和异步处理两种模式，异步模式通过线程池提升并发能力
+```gradle
+implementation 'io.github.xiajuan96:d2k-client:1.0.1-SNAPSHOT'
+```
 
-### 高可用性保障
-- **消费者重平衡**：DelayConsumerRebalanceListener处理分区分配和回收，确保资源正确清理
-- **偏移量管理**：同步模式直接提交，异步模式通过nextExpectedOffset和completedItems确保顺序提交
-- **优雅关闭**：支持优雅关闭机制，确保处理中的消息完成后再停止服务
+### 基本使用示例
 
-## 配置选项
-
-D2K采用配置分离设计，将Kafka原生配置与D2K专有配置分开管理：
-
-### 配置分离原则
-
-- **Kafka原生配置**：所有不以`d2k.`开头的配置项，直接传递给KafkaConsumer
-- **D2K专有配置**：所有以`d2k.`开头的配置项，由D2kConsumerConfig类管理
-
-### D2K专有配置
-
-| 配置项 | 类型 | 默认值 | 说明 |
-|--------|------|--------|------|
-| `d2k.loop.total.ms` | Long | 200 | 消费循环总时间（毫秒），控制消费者轮询频率 |
-| `d2k.queue.capacity` | Integer | 1000 | 内部队列容量阈值，超过此值将暂停分区消费 |
-
-### Kafka原生配置
-
-支持所有标准Kafka消费者配置，包括但不限于：
-
-| 配置项 | 说明 |
-|--------|------|
-| `bootstrap.servers` | Kafka集群地址 |
-| `group.id` | 消费者组ID |
-| `client.id` | 客户端ID |
-| `auto.offset.reset` | 偏移量重置策略 |
-| `session.timeout.ms` | 会话超时时间 |
-| `heartbeat.interval.ms` | 心跳间隔 |
-| `max.poll.records` | 单次拉取最大记录数 |
-| `max.poll.interval.ms` | 拉取间隔 |
-
-#### 重要说明：enable.auto.commit 参数
-
-**`enable.auto.commit` 参数在 D2K 中具有特殊性：**
-- **默认值**：`false`
-- **可修改性**：不可修改，系统会强制设置为 `false`
-- **原因**：D2K 延迟消费需要精确控制偏移量提交时机，确保消息处理的可靠性
-- **影响**：所有偏移量提交都由 D2K 内部机制自动管理，无需用户干预
-
-### 异步处理配置
-
-异步处理配置的详细参数说明和使用示例请参考 [高级使用指南 - 异步处理配置](ADVANCED_USAGE.md#异步处理配置)。
-
-### 延迟配置
-
-通过`DelayConfig`类配置主题和分区级别的默认延迟时间：
-
-- **主题级别配置**：为整个主题设置默认延迟时间
-- **分区级别配置**：为特定主题的特定分区设置延迟时间
-- **互斥性**：同一主题不能同时配置主题级别和分区级别的延迟
-
-### 生产者配置
-
-生产者配置示例：
+#### 1. 发送延迟消息
 
 ```java
-Map<String, Object> producerProps = new HashMap<>();
-// 标准Kafka配置
-producerProps.put("bootstrap.servers", "localhost:9092");
-producerProps.put("key.serializer", "org.apache.kafka.common.serialization.StringSerializer");
-producerProps.put("value.serializer", "org.apache.kafka.common.serialization.StringSerializer");
+import com.d2k.producer.DelayProducer;
+import java.util.*;
 
-// 注意：生产者只需要标准Kafka配置，延迟功能通过API方法实现
+public class DelayProducerExample {
+    public static void main(String[] args) {
+        // 创建Kafka生产者配置
+        Map<String, Object> props = new HashMap<>();
+        props.put("bootstrap.servers", "localhost:9092");
+        props.put("key.serializer", "org.apache.kafka.common.serialization.StringSerializer");
+        props.put("value.serializer", "org.apache.kafka.common.serialization.StringSerializer");
+        
+        // 创建延迟消息生产者
+        DelayProducer<String, String> producer = new DelayProducer<>(props);
+        
+        try {
+            // 发送延迟消息（5秒后消费）
+            producer.sendDelayMessage("my-topic", "order-123", "订单处理", 5000L);
+            
+            // 发送定时消息（指定具体时间）
+            long deliverAt = System.currentTimeMillis() + 30000; // 30秒后
+            producer.sendTimedMessage("my-topic", "reminder-456", "提醒消息", deliverAt);
+            
+            System.out.println("延迟消息发送成功！");
+        } finally {
+            producer.close();
+        }
+    }
+}
 ```
 
-### 消费者配置
-
-除了标准的Kafka消费者配置外，D2K支持以下扩展配置：
+#### 2. 消费延迟消息
 
 ```java
-Map<String, Object> consumerProps = new HashMap<>();
-// 标准Kafka配置
-consumerProps.put("bootstrap.servers", "localhost:9092");
-consumerProps.put("group.id", "my-group");
-consumerProps.put("key.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
-consumerProps.put("value.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
-consumerProps.put("auto.offset.reset", "earliest");
+import com.d2k.consumer.DelayConsumerContainer;
+import com.d2k.consumer.DelayItemHandler;
+import java.util.*;
 
-// D2K扩展配置
-consumerProps.put("d2k.loop.total.ms", 500L);     // 检查间隔500ms
-consumerProps.put("d2k.queue.capacity", 5000);    // 队列容量5000
-consumerProps.put("d2k.pause.threshold", 0.9);    // 暂停阈值90%
+public class DelayConsumerExample {
+    public static void main(String[] args) {
+        // 创建Kafka消费者配置
+        Map<String, Object> consumerProps = new HashMap<>();
+        consumerProps.put("bootstrap.servers", "localhost:9092");
+        consumerProps.put("group.id", "my-consumer-group");
+        consumerProps.put("key.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
+        consumerProps.put("value.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
+        consumerProps.put("auto.offset.reset", "earliest");
+        
+        // 创建消息处理器
+        DelayItemHandler<String, String> handler = item -> {
+            System.out.printf("处理延迟消息: key=%s, value=%s, 延迟时间已到！%n",
+                item.getRecord().key(),
+                item.getRecord().value());
+            
+            // 在这里添加你的业务逻辑
+            // 例如：发送邮件、更新订单状态、执行定时任务等
+        };
+        
+        // 创建延迟消息消费者容器
+        DelayConsumerContainer<String, String> container = new DelayConsumerContainer<>(
+            2, // 2个消费线程
+            consumerProps,
+            Arrays.asList("my-topic"),
+            handler
+        );
+        
+        // 启动消费者
+        container.start();
+        System.out.println("延迟消息消费者已启动，等待处理延迟消息...");
+        
+        // 添加关闭钩子，优雅关闭
+        Runtime.getRuntime().addShutdownHook(new Thread(container::stop));
+    }
+}
 ```
 
-## 高级用法
+### 运行效果
 
-更多高级使用方式、详细配置说明和最佳实践，请参考 [高级使用指南](ADVANCED_USAGE.md)。
+当你运行上述示例代码时，你会看到：
 
+1. **生产者端**：延迟消息被成功发送到 Kafka
+2. **消费者端**：消息会在指定的延迟时间后被精确处理
+3. **控制台输出**：显示消息处理的详细信息和时间戳
 
+> 💡 **提示**：更多高级用法（异步处理、配置优化、性能调优等）请参考 [高级使用指南](ADVANCED_USAGE.md)
 
-## 版本管理
+## 📚 文档导航
 
-本项目使用Maven Versions Plugin进行版本管理，推荐使用以下命令统一更新所有模块版本：
+根据你的需求，选择合适的文档：
 
-### 更新所有模块版本
+- **🚀 [高级使用指南](ADVANCED_USAGE.md)**：详细配置、性能调优、最佳实践
+- **👨‍💻 [开发者指南](DEVELOPER_GUIDE.md)**：API文档、技术实现、开发规范
+- **❓ [常见问题](FAQ.md)**：故障排除、问题解答
 
-更新根项目和所有子模块的版本，包括独立管理版本的模块：
+## 🤝 贡献指南
 
-**使用示例**：
-```bash
-# 第一步：更新根项目（这会同时更新d2k-test的父版本引用）
-mvn versions:set -DnewVersion=1.0.2 -N
+我们欢迎社区贡献！如果你想为 D2K 项目做出贡献：
 
-# 第二步：更新d2k-client独立模块
-mvn versions:set -DnewVersion=1.0.2 -pl d2k-client
+1. **提交 Issue**：报告 Bug 或提出新功能建议
+2. **提交 Pull Request**：修复问题或实现新功能
+3. **完善文档**：改进文档内容或添加使用示例
+4. **分享经验**：在社区分享你的使用经验和最佳实践
 
-# 第三步：提交所有更改
-mvn versions:commit
-```
+详细的贡献流程请参考 [开发者指南 - 贡献流程](DEVELOPER_GUIDE.md#贡献流程)。
 
-### 版本管理最佳实践
-
-1. **开发阶段**：使用SNAPSHOT版本（如 `1.1.0-SNAPSHOT`）
-2. **发布阶段**：使用正式版本（如 `1.1.0`）
-3. **统一版本**：推荐使用方式3同时更新所有模块版本，保持版本一致性
-4. **回滚操作**：如果需要撤销版本更改，可以使用 `mvn versions:revert`
-5. **备份文件**：版本更新会自动创建备份文件（.versionsBackup），提交后自动删除
-
-## 常见问题
-
-更多常见问题和解决方案，请参考 [高级使用指南](ADVANCED_USAGE.md) 中的故障排除部分。
-
-## 许可证
+## 📄 许可证
 
 本项目采用 [GNU Lesser General Public License v3.0 (LGPL-3.0)](https://www.gnu.org/licenses/lgpl-3.0.html) 开源许可证。
 
@@ -411,14 +274,16 @@ LGPL-3.0 是一个宽松的开源许可证，允许您：
 
 如果您修改了本软件的源代码并分发，则必须在相同的 LGPL-3.0 许可证下提供修改后的源代码。
 
-## API 接口文档
+## 👨‍💻 作者
 
-详细的API接口文档，请参考 [高级使用指南](ADVANCED_USAGE.md) 中的API参考部分。
+- **xiajuan96** - *项目创建者和主要维护者*
 
-## 贡献
+---
 
-欢迎提交Issue和Pull Request来改进这个项目！
+<div align="center">
 
-## 作者
+**🚀 D2K - 让Kafka延迟消息处理变得简单而高效！**
 
-- **xiajuan96** - *项目维护者* - [GitHub](https://github.com/xiajuan96)
+*如果这个项目对你有帮助，请给我们一个 ⭐ Star！*
+
+</div>
