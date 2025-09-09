@@ -142,7 +142,7 @@ flowchart TD
 <dependency>
     <groupId>io.github.xiajuan96</groupId>
     <artifactId>d2k-client</artifactId>
-    <version>1.0.1-SNAPSHOT</version>
+    <version>1.0.1</version>
 </dependency>
 ```
 
@@ -151,7 +151,7 @@ flowchart TD
 在你的 `build.gradle` 文件中添加以下依赖：
 
 ```gradle
-implementation 'io.github.xiajuan96:d2k-client:1.0.1-SNAPSHOT'
+implementation 'io.github.xiajuan96:d2k-client:1.0.1'
 ```
 
 ### 基本使用示例
