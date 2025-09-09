@@ -23,6 +23,7 @@ import org.apache.kafka.clients.consumer.*;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.errors.WakeupException;
 import org.apache.kafka.common.header.Header;
+import org.apache.kafka.common.serialization.Deserializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -54,9 +55,15 @@ public class DelayConsumerRunnable<K, V> implements Runnable {
     /**
      * Kafka 消费者配置参数
      */
-    private final Map<String, Object> kafkaConfigs;
-    private final D2kConsumerConfig d2kConfig;
-
+    private final Map<String, Object> configs;
+    /**
+     * 消息键反序列化器
+     */
+    private final Deserializer<K> keyDeserializer;
+    /**
+     * 消息值反序列化器
+     */
+    private final Deserializer<V> valueDeserializer;
 
     /**
      * Kafka 集群地址
@@ -92,8 +99,7 @@ public class DelayConsumerRunnable<K, V> implements Runnable {
     /**
      * 队列容量阈值，超过此值将暂停分区消费
      */
-    private final int queueCapacityThreshold;
-
+    private final int queueCapacityThreshold = 1000;
     /**
      * 主循环总耗时（毫秒），用于控制循环节奏
      */
@@ -114,80 +120,78 @@ public class DelayConsumerRunnable<K, V> implements Runnable {
      */
     private final Map<TopicPartition, ExecutorService> partitionExecutors = new ConcurrentHashMap<>();
 
-
+    /**
+     * 分配给当前消费者的分区列表（暂未使用）
+     */
+    private List<Integer> assignedPartitions;
 
     /**
      * 消费者运行状态标志
      */
     private boolean running;
 
-
+    /**
+     * 构造延迟消费者运行器（使用默认的空处理器）
+     *
+     * @param configs           Kafka 消费者配置
+     * @param keyDeserializer   键反序列化器
+     * @param valueDeserializer 值反序列化器
+     * @param topics            订阅的主题列表
+     */
+    public DelayConsumerRunnable(Map<String, Object> configs,
+                                 Deserializer<K> keyDeserializer,
+                                 Deserializer<V> valueDeserializer,
+                                 Collection<String> topics) {
+        this(configs, keyDeserializer, valueDeserializer, topics, item -> {
+        });
+    }
 
     /**
      * 构造延迟消费者运行器（完整参数版本）
      *
      * @param configs               Kafka 消费者配置
+     * @param keyDeserializer       键反序列化器
+     * @param valueDeserializer     值反序列化器
      * @param topics                订阅的主题列表
      * @param delayItemHandler      延迟消息处理器
      * @param asyncProcessingConfig 异步处理配置
      */
     public DelayConsumerRunnable(Map<String, Object> configs,
+                                 Deserializer<K> keyDeserializer,
+                                 Deserializer<V> valueDeserializer,
                                  Collection<String> topics,
                                  DelayItemHandler<K, V> delayItemHandler,
                                  AsyncProcessingConfig asyncProcessingConfig) {
-        // 参数校验 - 确保包含KafkaConsumer所需的全部必传参数
-        validateRequiredConfigs(configs);
-        
-        // 分离Kafka原生配置和D2K专有配置
-        Map<String, Object>[] separatedConfigs = separateConfigs(configs);
-        this.kafkaConfigs = separatedConfigs[0];
-        this.d2kConfig = new D2kConsumerConfig(separatedConfigs[1]);
-        
-        this.bootstraps = (String) kafkaConfigs.get(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG);
+        this.configs = configs;
+        this.keyDeserializer = keyDeserializer;
+        this.valueDeserializer = valueDeserializer;
+        this.bootstraps = (String) configs.get(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG);
         this.topics = new ArrayList<>(topics);
         this.delayItemHandler = delayItemHandler;
         this.asyncProcessingConfig = asyncProcessingConfig != null ? asyncProcessingConfig : AsyncProcessingConfig.createSyncConfig();
-        this.loopTotalMillis = d2kConfig.getLoopTotalMs();
-        this.queueCapacityThreshold = d2kConfig.getQueueCapacity();
-
-        this.kafkaConsumer = buildKafkaConsumer(kafkaConfigs);
+        this.loopTotalMillis = getLongConfig(configs, "d2k.loop.total.ms", 200L);
+        this.kafkaConsumer = buildKafkaConsumer(configs, keyDeserializer, valueDeserializer);
         kafkaConsumer.subscribe(topics, new DelayConsumerRebalanceListener());
     }
 
-    private KafkaConsumer<K, V> buildKafkaConsumer(Map<String, Object> configs) {
+    private KafkaConsumer<K, V> buildKafkaConsumer(Map<String, Object> configs, Deserializer<K> keyDeserializer, Deserializer<V> valueDeserializer) {
         Map<String, Object> copy = new HashMap<>(configs);
         Object clientId = copy.get("client.id");
         if (clientId != null) {
             copy.put("client.id", clientId.toString() + CONSUMER_CLIENT_ID_SEQUENCE.getAndIncrement());
         }
-        // 强制设置 enable.auto.commit 为 false，确保手动提交偏移量
-        copy.put("enable.auto.commit", false);
-        return new KafkaConsumer<>(copy);
+        return new KafkaConsumer<>(copy, keyDeserializer, valueDeserializer);
     }
 
     /**
      * 兼容性构造函数（默认同步模式）
      */
     public DelayConsumerRunnable(Map<String, Object> configs,
+                                 Deserializer<K> keyDeserializer,
+                                 Deserializer<V> valueDeserializer,
                                  Collection<String> topics,
                                  DelayItemHandler<K, V> delayItemHandler) {
-        this(configs, topics, delayItemHandler, AsyncProcessingConfig.createSyncConfig());
-    }
-
-    /**
-     * 构造延迟消费者运行器（测试专用版本）
-     * <p>
-     * 便于测试：外部注入 Consumer（可为 MockConsumer）
-     * 兼容性构造函数，测试专用，默认同步模式
-     *
-     * @param consumer         外部注入的 Kafka 消费者实例
-     * @param topics           订阅的主题列表
-     * @param delayItemHandler 延迟消息处理器
-     */
-    public DelayConsumerRunnable(Consumer<K, V> consumer,
-                                 Collection<String> topics,
-                                 DelayItemHandler<K, V> delayItemHandler) {
-        this(consumer, topics, delayItemHandler, AsyncProcessingConfig.createSyncConfig());
+        this(configs, keyDeserializer, valueDeserializer, topics, delayItemHandler, AsyncProcessingConfig.createSyncConfig());
     }
 
     /**
@@ -204,20 +208,26 @@ public class DelayConsumerRunnable<K, V> implements Runnable {
                                  Collection<String> topics,
                                  DelayItemHandler<K, V> delayItemHandler,
                                  AsyncProcessingConfig asyncProcessingConfig) {
-        this.kafkaConfigs = Collections.emptyMap();
-        this.d2kConfig = new D2kConsumerConfig();
+        this.configs = Collections.emptyMap();
+        this.keyDeserializer = null;
+        this.valueDeserializer = null;
         this.bootstraps = null;
         this.topics = new ArrayList<>(topics);
         this.delayItemHandler = delayItemHandler;
         this.asyncProcessingConfig = asyncProcessingConfig != null ? asyncProcessingConfig : AsyncProcessingConfig.createSyncConfig();
-        this.loopTotalMillis = d2kConfig.getLoopTotalMs();
-        this.queueCapacityThreshold = d2kConfig.getQueueCapacity();
-
+        this.loopTotalMillis = 200L;
         this.kafkaConsumer = consumer;
         kafkaConsumer.subscribe(topics, new DelayConsumerRebalanceListener());
     }
 
-
+    /**
+     * 兼容性构造函数（测试专用，默认同步模式）
+     */
+    public DelayConsumerRunnable(Consumer<K, V> consumer,
+                                 Collection<String> topics,
+                                 DelayItemHandler<K, V> delayItemHandler) {
+        this(consumer, topics, delayItemHandler, AsyncProcessingConfig.createSyncConfig());
+    }
 
     /**
      * 运行延迟消费者主循环
@@ -626,7 +636,34 @@ public class DelayConsumerRunnable<K, V> implements Runnable {
         return executor;
     }
 
-
+    /**
+     * 根据队列积压情况调整分区暂停/恢复状态
+     * <p>
+     * 检查所有分区队列的大小：
+     * - 如果队列大小超过阈值且未暂停，则暂停该分区
+     * - 如果队列大小低于阈值且已暂停，则恢复该分区
+     */
+    private void adjustPauseResumeByBacklog() {
+        Set<TopicPartition> toPause = new HashSet<>();
+        Set<TopicPartition> toResume = new HashSet<>();
+        for (Map.Entry<TopicPartition, PriorityBlockingQueue<DelayItem<K, V>>> e : tpQueues.entrySet()) {
+            TopicPartition tp = e.getKey();
+            int size = e.getValue().size();
+            if (size > queueCapacityThreshold && !paused.contains(tp)) {
+                toPause.add(tp);
+            } else if (size <= queueCapacityThreshold && paused.contains(tp)) {
+                toResume.add(tp);
+            }
+        }
+        if (!toPause.isEmpty()) {
+            kafkaConsumer.pause(toPause);
+            paused.addAll(toPause);
+        }
+        if (!toResume.isEmpty()) {
+            kafkaConsumer.resume(toResume);
+            paused.removeAll(toResume);
+        }
+    }
 
     /**
      * 在拉取消息前根据队列积压情况暂停分区
@@ -660,8 +697,7 @@ public class DelayConsumerRunnable<K, V> implements Runnable {
         for (Map.Entry<TopicPartition, PriorityBlockingQueue<DelayItem<K, V>>> e : tpQueues.entrySet()) {
             TopicPartition tp = e.getKey();
             int size = e.getValue().size();
-            double usage = (double) size / queueCapacityThreshold;
-            if (usage <= 1.0 && paused.contains(tp)) {
+            if (size <= queueCapacityThreshold && paused.contains(tp)) {
                 toResume.add(tp);
             }
         }
@@ -671,132 +707,26 @@ public class DelayConsumerRunnable<K, V> implements Runnable {
         }
     }
 
-
-
     /**
-     * 获取Kafka原生配置
-     * @return Kafka配置的只读副本
-     */
-    public Map<String, Object> getKafkaConfigs() {
-        return Collections.unmodifiableMap(kafkaConfigs);
-    }
-
-    /**
-     * 获取D2K专有配置
-     * @return D2K配置的只读副本
-     */
-    public Map<String, Object> getD2kConfigs() {
-        return d2kConfig.getOriginalConfigs();
-    }
-    
-    /**
-     * 获取D2K消费者配置对象
-     * 
-     * @return D2K消费者配置对象
-     */
-    public D2kConsumerConfig getD2kConfig() {
-        return d2kConfig;
-    }
-
-    /**
-     * 校验必传配置参数
+     * 从配置中获取长整型值
+     * <p>
+     * 安全地从配置映射中获取长整型值，支持类型转换和默认值。
      *
-     * @param configs Kafka消费者配置
-     * @throws IllegalArgumentException 如果缺少必传参数或参数格式不正确
+     * @param configs 配置映射
+     * @param key     配置键
+     * @param defVal  默认值
+     * @return 配置值或默认值
      */
-    private static void validateRequiredConfigs(Map<String, Object> configs) {
-        if (configs == null) {
-            throw new IllegalArgumentException("配置参数不能为null");
-        }
-        
-        // 检查必传参数
-        String[] requiredParams = {
-            "bootstrap.servers",
-            "group.id", 
-            "key.deserializer",
-            "value.deserializer"
-        };
-        
-        for (String param : requiredParams) {
-            Object value = configs.get(param);
-            if (value == null) {
-                throw new IllegalArgumentException("缺少必传参数: " + param);
-            }
-            
-            String stringValue = value.toString().trim();
-            if (stringValue.isEmpty()) {
-                throw new IllegalArgumentException("参数值不能为空: " + param);
-            }
-            
-            // 特殊校验
-            if ("bootstrap.servers".equals(param)) {
-                validateBootstrapServers(stringValue, param);
-            } else if (param.endsWith(".deserializer")) {
-                validateDeserializerClass(stringValue, param);
-            }
-        }
-    }
-    
-    /**
-     * 校验bootstrap.servers参数格式
-     */
-    private static void validateBootstrapServers(String servers, String paramName) {
-        String[] serverList = servers.split(",");
-        for (String server : serverList) {
-            server = server.trim();
-            if (!server.contains(":")) {
-                throw new IllegalArgumentException(paramName + "格式错误，应为host:port格式，当前值: " + server);
-            }
-            
-            String[] parts = server.split(":");
-            if (parts.length != 2) {
-                throw new IllegalArgumentException(paramName + "格式错误，应为host:port格式，当前值: " + server);
-            }
-            
-            try {
-                int port = Integer.parseInt(parts[1]);
-                if (port <= 0 || port > 65535) {
-                    throw new IllegalArgumentException(paramName + "端口号无效，应在1-65535范围内，当前值: " + port);
-                }
-            } catch (NumberFormatException e) {
-                throw new IllegalArgumentException(paramName + "端口号格式错误，应为数字，当前值: " + parts[1]);
-            }
-        }
-    }
-    
-    /**
-     * 校验反序列化器类名
-     */
-    private static void validateDeserializerClass(String className, String paramName) {
+    private static long getLongConfig(Map<String, Object> configs, String key, long defVal) {
+        if (configs == null) return defVal;
+        Object v = configs.get(key);
+        if (v == null) return defVal;
+        if (v instanceof Number) return ((Number) v).longValue();
         try {
-            Class.forName(className);
-        } catch (ClassNotFoundException e) {
-            throw new IllegalArgumentException(paramName + "指定的类不存在: " + className);
+            return Long.parseLong(String.valueOf(v));
+        } catch (Exception e) {
+            return defVal;
         }
-    }
-
-    /**
-     * 分离Kafka原生配置和D2K专有配置
-     * @param configs 原始配置映射
-     * @return 数组，[0]为Kafka配置，[1]为D2K配置
-     */
-    private static Map<String, Object>[] separateConfigs(Map<String, Object> configs) {
-        Map<String, Object> kafkaConfigs = new HashMap<>();
-        Map<String, Object> d2kConfigs = D2kConsumerConfig.extractD2kConfigs(configs);
-        
-        for (Map.Entry<String, Object> entry : configs.entrySet()) {
-            String key = entry.getKey();
-            if (!key.startsWith("d2k.")) {
-                // Kafka原生配置
-                kafkaConfigs.put(key, entry.getValue());
-            }
-        }
-        
-        @SuppressWarnings("unchecked")
-        Map<String, Object>[] result = new Map[2];
-        result[0] = kafkaConfigs;
-        result[1] = d2kConfigs;
-        return result;
     }
 
     /**
