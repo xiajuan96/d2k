@@ -18,6 +18,8 @@
  */
 package com.d2k.consumer;
 
+import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.common.serialization.StringDeserializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -33,7 +35,7 @@ import java.util.concurrent.TimeUnit;
 public class DelayConsumerContainer<K, V> {
 
     private static final Logger log = LoggerFactory.getLogger(DelayConsumerContainer.class);
-    
+
     private final int concurrency;
     private final Map<String, Object> configs;
     private final Collection<String> topics;
@@ -41,6 +43,21 @@ public class DelayConsumerContainer<K, V> {
     private final AsyncProcessingConfig asyncProcessingConfig;
     private final List<DelayConsumerRunnable<K, V>> workers = new ArrayList<>();
     private ExecutorService executor;
+
+
+    public static DelayConsumerContainer<String, String> simpleContainer(String bootstrapServers,
+                                                                         Collection<String> topics,
+                                                                         DelayItemHandler<String, String> delayItemHandler
+    ) {
+        Map<String, Object> consumerProps = new HashMap<>();
+        consumerProps.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
+        consumerProps.put(ConsumerConfig.GROUP_ID_CONFIG, "simple-delay-consumer");
+        consumerProps.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
+        consumerProps.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
+        consumerProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "latest");
+        consumerProps.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false);
+        return new DelayConsumerContainer<>(1, consumerProps, topics, delayItemHandler, null);
+    }
 
     public DelayConsumerContainer(int concurrency,
                                   Map<String, Object> configs,
@@ -53,7 +70,7 @@ public class DelayConsumerContainer<K, V> {
         this.delayItemHandler = delayItemHandler;
         this.asyncProcessingConfig = asyncProcessingConfig != null ? asyncProcessingConfig : AsyncProcessingConfig.createSyncConfig();
     }
-    
+
     /**
      * 兼容性构造函数（默认同步模式）
      */
@@ -103,7 +120,6 @@ public class DelayConsumerContainer<K, V> {
             log.info("DelayConsumerContainer stopped");
         }
     }
-
 
 
 }
