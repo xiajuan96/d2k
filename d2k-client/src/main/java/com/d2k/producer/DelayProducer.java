@@ -20,6 +20,7 @@ package com.d2k.producer;
 
 import org.apache.kafka.clients.producer.*;
 import org.apache.kafka.common.header.internals.RecordHeader;
+import org.apache.kafka.common.serialization.StringSerializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -32,6 +33,9 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class DelayProducer<K, V> {
     private static final Logger log = LoggerFactory.getLogger(DelayProducer.class);
     private static final AtomicInteger PRODUCER_CLIENT_ID_SEQUENCE = new AtomicInteger(1);
+
+    private static final String WITH_DELAY_HEADER = "d2k-delay-ms";
+    private static final String DELIVER_AT_HEADER = "d2k-deliver-at";
 
     private final Producer<K, V> producer;
 
@@ -50,7 +54,7 @@ public class DelayProducer<K, V> {
         HashMap<String, Object> copy = new HashMap<>(props);
         Object clientId = copy.get(ProducerConfig.CLIENT_ID_CONFIG);
         if (clientId == null) {
-            copy.put(ProducerConfig.CLIENT_ID_CONFIG, "");
+            copy.put(ProducerConfig.CLIENT_ID_CONFIG, "default-delay-sender-" + PRODUCER_CLIENT_ID_SEQUENCE.getAndIncrement());
         } else {
             copy.put(ProducerConfig.CLIENT_ID_CONFIG, clientId.toString() + PRODUCER_CLIENT_ID_SEQUENCE.getAndIncrement());
         }
@@ -67,8 +71,46 @@ public class DelayProducer<K, V> {
         this.producer = producer;
     }
 
+    public static DelayProducer<String, String> buildStringProducer(String bootstrapServers) {
+        Map<String, Object> producerProps = new HashMap<>();
+        producerProps.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
+        producerProps.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
+        producerProps.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
+        producerProps.put(ProducerConfig.CLIENT_ID_CONFIG, "default-string-delay-producer-" + PRODUCER_CLIENT_ID_SEQUENCE.getAndIncrement());
+        producerProps.put(ProducerConfig.ACKS_CONFIG, "all");
+        producerProps.put(ProducerConfig.RETRIES_CONFIG, 3);
+        producerProps.put(ProducerConfig.REQUEST_TIMEOUT_MS_CONFIG, 30000);
+
+        return new DelayProducer<>(producerProps);
+    }
+
     /**
      * 发送延迟消息（指定延迟时间）
+     *
+     * @param topic   主题
+     * @param value   消息值
+     * @param delayMs 延迟时间（毫秒）
+     * @return Future<RecordMetadata>
+     */
+    public Future<RecordMetadata> sendWithDelay(String topic, V value, long delayMs) {
+        return sendWithDelay(topic, null, value, delayMs, null);
+    }
+
+    /**
+     * 异步发送延迟消息（指定延迟时间）
+     *
+     * @param topic    主题
+     * @param value    消息值
+     * @param delayMs  延迟时间（毫秒）
+     * @param callback 回调接口
+     * @return Future<RecordMetadata>
+     */
+    public Future<RecordMetadata> sendWithDelay(String topic, V value, long delayMs, DelayCallback callback) {
+        return sendWithDelay(topic, null, value, delayMs, callback);
+    }
+
+    /**
+     * 异步发送延迟消息（指定延迟时间）
      *
      * @param topic   主题
      * @param key     消息键
@@ -77,12 +119,64 @@ public class DelayProducer<K, V> {
      * @return Future<RecordMetadata>
      */
     public Future<RecordMetadata> sendWithDelay(String topic, K key, V value, long delayMs) {
+        return sendWithDelay(topic, null, key, value, delayMs, null);
+    }
+
+
+    /**
+     * 异步发送延迟消息（指定延迟时间）
+     *
+     * @param topic    主题
+     * @param key      消息键
+     * @param value    消息值
+     * @param delayMs  延迟时间（毫秒）
+     * @param callback 回调接口
+     * @return Future<RecordMetadata>
+     */
+    public Future<RecordMetadata> sendWithDelay(String topic, K key, V value, long delayMs, DelayCallback callback) {
+        return sendWithDelay(topic, null, key, value, delayMs, callback);
+    }
+
+    /**
+     * 异步发送延迟消息到指定分区
+     *
+     * @param topic     主题
+     * @param partition 分区号
+     * @param key       消息键
+     * @param value     消息值
+     * @param delayMs   延迟时间（毫秒）
+     * @return Future<RecordMetadata>
+     */
+    public Future<RecordMetadata> sendWithDelay(String topic, Integer partition, K key, V value, long delayMs) {
+        return sendWithDelay(topic, partition, key, value, delayMs, null);
+    }
+
+
+    /**
+     * 发送延迟消息（指定延迟时间）
+     *
+     * @param topic     主题
+     * @param partition 分区号
+     * @param key       消息键
+     * @param value     消息值
+     * @param delayMs   延迟时间（毫秒）
+     * @param callback  回调接口
+     * @return Future<RecordMetadata>
+     */
+    public Future<RecordMetadata> sendWithDelay(String topic,
+                                                Integer partition,
+                                                K key,
+                                                V value,
+                                                long delayMs,
+                                                DelayCallback callback) {
         long actualDelayMs = Math.max(0L, delayMs);
-        log.debug("Sending message to topic {} with key {} and d2k-delay-ms={}", topic, key, actualDelayMs);
-        ProducerRecord<K, V> record = new ProducerRecord<>(topic, key, value);
-        record.headers().add(new RecordHeader("d2k-delay-ms",
-                Long.toString(actualDelayMs).getBytes(StandardCharsets.UTF_8)));
-        return producer.send(record);
+        log.debug("Sending message to topic {} with key {} and delayMs={}", topic, key, actualDelayMs);
+        ProducerRecord<K, V> record;
+        record = new ProducerRecord<>(topic, partition, System.currentTimeMillis(), key, value);
+        record.headers()
+                .add(new RecordHeader(WITH_DELAY_HEADER, Long.toString(actualDelayMs).getBytes(StandardCharsets.UTF_8)));
+
+        return doSend(record, callback);
     }
 
     /**
@@ -95,30 +189,21 @@ public class DelayProducer<K, V> {
      * @return Future<RecordMetadata>
      */
     public Future<RecordMetadata> sendDeliverAt(String topic, K key, V value, long deliverAtEpochMs) {
-        log.debug("Sending message to topic {} with key {} and d2k-deliver-at={}", topic, key, deliverAtEpochMs);
-        ProducerRecord<K, V> record = new ProducerRecord<>(topic, key, value);
-        record.headers().add(new RecordHeader("d2k-deliver-at",
-                Long.toString(deliverAtEpochMs).getBytes(StandardCharsets.UTF_8)));
-        return producer.send(record);
+        return sendDeliverAt(topic, null, key, value, deliverAtEpochMs, null);
     }
 
     /**
-     * 发送延迟消息到指定分区
+     * 异步发送定时消息（指定投递时间戳）
      *
-     * @param topic     主题
-     * @param partition 分区号
-     * @param key       消息键
-     * @param value     消息值
-     * @param delayMs   延迟时间（毫秒）
+     * @param topic            主题
+     * @param key              消息键
+     * @param value            消息值
+     * @param deliverAtEpochMs 投递时间戳（毫秒）
+     * @param callback         回调接口
      * @return Future<RecordMetadata>
      */
-    public Future<RecordMetadata> sendWithDelayToPartition(String topic, Integer partition, K key, V value, long delayMs) {
-        long actualDelayMs = Math.max(0L, delayMs);
-        log.debug("Sending message to topic {} partition {} with key {} and d2k-delay-ms={}", topic, partition, key, actualDelayMs);
-        ProducerRecord<K, V> record = new ProducerRecord<>(topic, partition, key, value);
-        record.headers().add(new RecordHeader("d2k-delay-ms",
-                Long.toString(actualDelayMs).getBytes(StandardCharsets.UTF_8)));
-        return producer.send(record);
+    public Future<RecordMetadata> sendDeliverAt(String topic, K key, V value, long deliverAtEpochMs, DelayCallback callback) {
+        return sendDeliverAt(topic, null, key, value, deliverAtEpochMs, callback);
     }
 
     /**
@@ -131,23 +216,67 @@ public class DelayProducer<K, V> {
      * @param deliverAtEpochMs 投递时间戳（毫秒）
      * @return Future<RecordMetadata>
      */
-    public Future<RecordMetadata> sendDeliverAtToPartition(String topic, Integer partition, K key, V value, long deliverAtEpochMs) {
-        log.debug("Sending message to topic {} partition {} with key {} and d2k-deliver-at={}", topic, partition, key, deliverAtEpochMs);
-        ProducerRecord<K, V> record = new ProducerRecord<>(topic, partition, key, value);
-        record.headers().add(new RecordHeader("d2k-deliver-at",
+    public Future<RecordMetadata> sendDeliverAt(String topic, Integer partition, K key, V value, long deliverAtEpochMs) {
+        return sendDeliverAt(topic, partition, key, value, deliverAtEpochMs, null);
+    }
+
+    /**
+     * 异步发送定时消息到指定分区（指定投递时间戳）
+     *
+     * @param topic            主题
+     * @param partition        分区号
+     * @param key              消息键
+     * @param value            消息值
+     * @param deliverAtEpochMs 投递时间戳（毫秒）
+     * @param callback         回调接口
+     * @return Future<RecordMetadata>
+     */
+    public Future<RecordMetadata> sendDeliverAt(String topic,
+                                                Integer partition,
+                                                K key,
+                                                V value,
+                                                long deliverAtEpochMs,
+                                                DelayCallback callback) {
+        log.debug("Sending message to topic {}, partition {} with key {} and deliverAt={}", topic, partition, key, deliverAtEpochMs);
+        ProducerRecord<K, V> record;
+        record = new ProducerRecord<>(topic, partition, System.currentTimeMillis(), key, value);
+        record.headers().add(new RecordHeader(DELIVER_AT_HEADER,
                 Long.toString(deliverAtEpochMs).getBytes(StandardCharsets.UTF_8)));
-        return producer.send(record);
+
+        return doSend(record, callback);
+    }
+
+    private Future<RecordMetadata> doSend(ProducerRecord<K, V> record, DelayCallback callback) {
+        return producer.send(record, (metadata, exception) -> {
+            try {
+                if (exception != null) {
+                    log.error("Failed to send message to topic {} partition {}",
+                            metadata.topic(), metadata.partition(), exception);
+                    if (callback != null) {
+                        callback.onFailure(exception);
+                    }
+                } else {
+                    log.debug("Successfully sent message  metadata: {}", metadata);
+                    if (callback != null) {
+                        callback.onSuccess(metadata);
+                    }
+                }
+            } catch (Exception callbackException) {
+                log.error("Exception in callback execution for message to topic {} partition {}",
+                        metadata.topic(), metadata.partition(), callbackException);
+            }
+        });
     }
 
     /**
      * 获取底层的Producer实例
-     * 
+     *
      * @return Producer实例
      */
     public Producer<K, V> getProducer() {
         return producer;
     }
-    
+
     public void close() {
         log.info("Closing DelayProducer");
         producer.flush();

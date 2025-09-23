@@ -124,7 +124,7 @@ public class ConfigurableDelayProducer<K, V> {
         log.debug("Selected partition {} from {} matching partitions for topic {} with delay {}ms", 
                 selectedPartition, matchingPartitions.size(), topic, delayMs);
         
-        return delayProducer.sendWithDelayToPartition(topic, selectedPartition, key, value, delayMs);
+        return delayProducer.sendWithDelay(topic, selectedPartition, key, value, delayMs);
     }
     
     /**
