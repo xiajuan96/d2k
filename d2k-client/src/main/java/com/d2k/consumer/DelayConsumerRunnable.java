@@ -70,7 +70,7 @@ public class DelayConsumerRunnable<K, V> implements Runnable {
     /**
      * Kafka 消费者实例
      */
-    private final Consumer<K, V> kafkaConsumer;
+    private final Consumer<K, V> consumer;
 
     /**
      * 分区延迟队列映射：TopicPartition -> 延迟消息优先队列
@@ -115,12 +115,10 @@ public class DelayConsumerRunnable<K, V> implements Runnable {
     private final Map<TopicPartition, ExecutorService> partitionExecutors = new ConcurrentHashMap<>();
 
 
-
     /**
      * 消费者运行状态标志
      */
     private boolean running;
-
 
 
     /**
@@ -137,12 +135,12 @@ public class DelayConsumerRunnable<K, V> implements Runnable {
                                  AsyncProcessingConfig asyncProcessingConfig) {
         // 参数校验 - 确保包含KafkaConsumer所需的全部必传参数
         validateRequiredConfigs(configs);
-        
+
         // 分离Kafka原生配置和D2K专有配置
         Map<String, Object>[] separatedConfigs = separateConfigs(configs);
         this.kafkaConfigs = separatedConfigs[0];
         this.d2kConfig = new D2kConsumerConfig(separatedConfigs[1]);
-        
+
         this.bootstraps = (String) kafkaConfigs.get(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG);
         this.topics = new ArrayList<>(topics);
         this.delayItemHandler = delayItemHandler;
@@ -150,8 +148,8 @@ public class DelayConsumerRunnable<K, V> implements Runnable {
         this.loopTotalMillis = d2kConfig.getLoopTotalMs();
         this.queueCapacityThreshold = d2kConfig.getQueueCapacity();
 
-        this.kafkaConsumer = buildKafkaConsumer(kafkaConfigs);
-        kafkaConsumer.subscribe(topics, new DelayConsumerRebalanceListener());
+        this.consumer = buildKafkaConsumer(kafkaConfigs);
+        consumer.subscribe(topics, new DelayConsumerRebalanceListener());
     }
 
     private KafkaConsumer<K, V> buildKafkaConsumer(Map<String, Object> configs) {
@@ -161,7 +159,7 @@ public class DelayConsumerRunnable<K, V> implements Runnable {
             copy.put("client.id", clientId.toString() + CONSUMER_CLIENT_ID_SEQUENCE.getAndIncrement());
         }
         // 强制设置 enable.auto.commit 为 false，确保手动提交偏移量
-        copy.put("enable.auto.commit", false);
+        copy.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false);
         return new KafkaConsumer<>(copy);
     }
 
@@ -213,10 +211,9 @@ public class DelayConsumerRunnable<K, V> implements Runnable {
         this.loopTotalMillis = d2kConfig.getLoopTotalMs();
         this.queueCapacityThreshold = d2kConfig.getQueueCapacity();
 
-        this.kafkaConsumer = consumer;
-        kafkaConsumer.subscribe(topics, new DelayConsumerRebalanceListener());
+        this.consumer = consumer;
+        this.consumer.subscribe(topics, new DelayConsumerRebalanceListener());
     }
-
 
 
     /**
@@ -244,7 +241,7 @@ public class DelayConsumerRunnable<K, V> implements Runnable {
             ConsumerRecords<K, V> records;
             try {
                 log.debug("Polling for records with timeout 200ms");
-                records = kafkaConsumer.poll(Duration.ofMillis(200L));
+                records = consumer.poll(Duration.ofMillis(200L));
             } catch (WakeupException we) {
                 log.debug("Received WakeupException");
                 if (!running) {
@@ -269,7 +266,7 @@ public class DelayConsumerRunnable<K, V> implements Runnable {
             waitUntilTimeout();
 
             // 把不同partition的offset提交一下
-            batchCommit();
+            batchCommitAsync();
 
             // 恢复 backlog 已降低的分区，便于异步拉取提前发生（不依赖是否拉到消息）
             log.debug("Adjusting resume by backlog before sleep");
@@ -294,10 +291,10 @@ public class DelayConsumerRunnable<K, V> implements Runnable {
         stopQueues();
 
         log.debug("Final batch commit");
-        batchCommit();
+        batchCommitSync();
         try {
             log.info("Closing Kafka consumer");
-            kafkaConsumer.close();
+            consumer.close();
         } catch (Exception e) {
             log.warn("Error closing Kafka consumer: {}", e.getMessage());
         }
@@ -372,16 +369,50 @@ public class DelayConsumerRunnable<K, V> implements Runnable {
     }
 
     /**
+     * 批量异步提交偏移量
+     * <p>
+     * 将所有待提交的偏移量一次性提交到 Kafka，
+     * 提交成功后清理已提交的偏移量记录。
+     */
+    private void batchCommitAsync() {
+        if (offsetsToCommit.isEmpty()) {
+            return;
+        }
+        Map<TopicPartition, OffsetAndMetadata> commitMap = new HashMap<>();
+        for (Map.Entry<TopicPartition, Long> e : offsetsToCommit.entrySet()) {
+            log.info("Committing offset {} for {}-{}", e.getValue(),
+                    e.getKey().topic(), e.getKey().partition());
+            commitMap.put(e.getKey(), new OffsetAndMetadata(e.getValue()));
+        }
+        try {
+            consumer.commitAsync(commitMap, new OffsetCommitCallback() {
+                @Override
+                public void onComplete(Map<TopicPartition, OffsetAndMetadata> offsets, Exception exception) {
+                    if (exception == null) {
+                        //提交成功
+                        offsetsToCommit.keySet().removeAll(offsets.keySet());
+                        log.debug("Successfully committed offsets for {} partitions", commitMap.size());
+                    } else {
+                        // 提交失败
+                        log.error("Error committing offsets: {}", exception.getMessage());
+                    }
+                }
+            });
+        } catch (Exception e) {
+            log.error("Error committing offsets: {}", e.getMessage());
+        }
+    }
+
+    /**
      * 批量提交偏移量
      * <p>
      * 将所有待提交的偏移量一次性提交到 Kafka，
      * 提交成功后清理已提交的偏移量记录。
      */
-    private void batchCommit() {
+    private void batchCommitSync() {
         if (offsetsToCommit.isEmpty()) {
             return;
         }
-        log.debug("Batch committing offsets for {} partitions", offsetsToCommit.size());
         Map<TopicPartition, OffsetAndMetadata> commitMap = new HashMap<>();
         for (Map.Entry<TopicPartition, Long> e : offsetsToCommit.entrySet()) {
             log.debug("Committing offset {} for {}-{}", e.getValue(),
@@ -389,7 +420,7 @@ public class DelayConsumerRunnable<K, V> implements Runnable {
             commitMap.put(e.getKey(), new OffsetAndMetadata(e.getValue()));
         }
         try {
-            kafkaConsumer.commitSync(commitMap);
+            consumer.commitSync(commitMap);
             offsetsToCommit.keySet().removeAll(commitMap.keySet());
             log.debug("Successfully committed offsets for {} partitions", commitMap.size());
         } catch (Exception e) {
@@ -450,21 +481,6 @@ public class DelayConsumerRunnable<K, V> implements Runnable {
             queue.offer(new DelayItem<>(delayMs, resumeAt, record));
         }
     }
-
-    /**
-     * 执行一次消息处理循环
-     * <p>
-     * 用于测试或单次处理场景，执行一次消息拉取、分发和提交操作。
-     */
-    public void processOnce() {
-        ConsumerRecords<K, V> records = kafkaConsumer.poll(Duration.ofMillis(50L));
-        Set<TopicPartition> partitions = records.partitions();
-        for (TopicPartition partition : partitions) {
-            addDelayBufferQueue(partition, records.records(partition));
-        }
-        batchCommit();
-    }
-
 
     /**
      * 检查消费者是否正在运行
@@ -551,7 +567,7 @@ public class DelayConsumerRunnable<K, V> implements Runnable {
                 log.debug("Cleaned up resources for revoked partition {}-{}", tp.topic(), tp.partition());
             }
 
-            batchCommit();
+            batchCommitSync();
         }
 
         /**
@@ -564,12 +580,41 @@ public class DelayConsumerRunnable<K, V> implements Runnable {
         @Override
         public void onPartitionsAssigned(Collection<TopicPartition> partitions) {
             log.info("Partitions assigned: {}", partitions);
+
+            if (!collectAndCommitIfNecessary(partitions)) {
+                return;
+            }
+
             for (TopicPartition tp : partitions) {
-                log.debug("Setting up processor for newly assigned partition {}-{}",
+                log.info("onPartitionsAssigned Setting up processor for newly assigned partition {}-{}",
                         tp.topic(), tp.partition());
-                PriorityBlockingQueue<DelayItem<K, V>> q = tpQueues.computeIfAbsent(tp, k -> new PriorityBlockingQueue<>());
+                PriorityBlockingQueue<DelayItem<K, V>> q = DelayConsumerRunnable.this.tpQueues.computeIfAbsent(tp, k -> new PriorityBlockingQueue<>());
                 startProcessorIfAbsent(tp, q);
             }
+        }
+
+        private boolean collectAndCommitIfNecessary(Collection<TopicPartition> partitions) {
+            // Commit initial positions - this is generally redundant but
+            // it protects us from the case when another consumer starts
+            // and rebalance would cause it to reset at the end
+            // see https://github.com/spring-projects/spring-kafka/issues/110
+            Map<TopicPartition, OffsetAndMetadata> offsetsToCommit = new HashMap<>();
+            Map<TopicPartition, OffsetAndMetadata> committed =
+                    DelayConsumerRunnable.this.consumer.committed(new HashSet<>(partitions));
+            for (TopicPartition partition : partitions) {
+                try {
+                    if (committed.get(partition) == null) { // no existing commit for this group
+                        offsetsToCommit.put(partition, new OffsetAndMetadata(DelayConsumerRunnable.this.consumer.position(partition)));
+                    }
+                } catch (NoOffsetForPartitionException e) {
+                    log.error("No offset and no reset policy", e);
+                    return false;
+                }
+            }
+            if (!offsetsToCommit.isEmpty()) {
+                consumer.commitSync(offsetsToCommit);
+            }
+            return true;
         }
     }
 
@@ -627,7 +672,6 @@ public class DelayConsumerRunnable<K, V> implements Runnable {
     }
 
 
-
     /**
      * 在拉取消息前根据队列积压情况暂停分区
      * <p>
@@ -644,7 +688,7 @@ public class DelayConsumerRunnable<K, V> implements Runnable {
             }
         }
         if (!toPause.isEmpty()) {
-            kafkaConsumer.pause(toPause);
+            consumer.pause(toPause);
             paused.addAll(toPause);
         }
     }
@@ -666,15 +710,15 @@ public class DelayConsumerRunnable<K, V> implements Runnable {
             }
         }
         if (!toResume.isEmpty()) {
-            kafkaConsumer.resume(toResume);
+            consumer.resume(toResume);
             paused.removeAll(toResume);
         }
     }
 
 
-
     /**
      * 获取Kafka原生配置
+     *
      * @return Kafka配置的只读副本
      */
     public Map<String, Object> getKafkaConfigs() {
@@ -683,15 +727,16 @@ public class DelayConsumerRunnable<K, V> implements Runnable {
 
     /**
      * 获取D2K专有配置
+     *
      * @return D2K配置的只读副本
      */
     public Map<String, Object> getD2kConfigs() {
         return d2kConfig.getOriginalConfigs();
     }
-    
+
     /**
      * 获取D2K消费者配置对象
-     * 
+     *
      * @return D2K消费者配置对象
      */
     public D2kConsumerConfig getD2kConfig() {
@@ -708,26 +753,26 @@ public class DelayConsumerRunnable<K, V> implements Runnable {
         if (configs == null) {
             throw new IllegalArgumentException("配置参数不能为null");
         }
-        
+
         // 检查必传参数
         String[] requiredParams = {
-            "bootstrap.servers",
-            "group.id", 
-            "key.deserializer",
-            "value.deserializer"
+                "bootstrap.servers",
+                "group.id",
+                "key.deserializer",
+                "value.deserializer"
         };
-        
+
         for (String param : requiredParams) {
             Object value = configs.get(param);
             if (value == null) {
                 throw new IllegalArgumentException("缺少必传参数: " + param);
             }
-            
+
             String stringValue = value.toString().trim();
             if (stringValue.isEmpty()) {
                 throw new IllegalArgumentException("参数值不能为空: " + param);
             }
-            
+
             // 特殊校验
             if ("bootstrap.servers".equals(param)) {
                 validateBootstrapServers(stringValue, param);
@@ -736,7 +781,7 @@ public class DelayConsumerRunnable<K, V> implements Runnable {
             }
         }
     }
-    
+
     /**
      * 校验bootstrap.servers参数格式
      */
@@ -747,12 +792,12 @@ public class DelayConsumerRunnable<K, V> implements Runnable {
             if (!server.contains(":")) {
                 throw new IllegalArgumentException(paramName + "格式错误，应为host:port格式，当前值: " + server);
             }
-            
+
             String[] parts = server.split(":");
             if (parts.length != 2) {
                 throw new IllegalArgumentException(paramName + "格式错误，应为host:port格式，当前值: " + server);
             }
-            
+
             try {
                 int port = Integer.parseInt(parts[1]);
                 if (port <= 0 || port > 65535) {
@@ -763,7 +808,7 @@ public class DelayConsumerRunnable<K, V> implements Runnable {
             }
         }
     }
-    
+
     /**
      * 校验反序列化器类名
      */
@@ -777,13 +822,14 @@ public class DelayConsumerRunnable<K, V> implements Runnable {
 
     /**
      * 分离Kafka原生配置和D2K专有配置
+     *
      * @param configs 原始配置映射
      * @return 数组，[0]为Kafka配置，[1]为D2K配置
      */
     private static Map<String, Object>[] separateConfigs(Map<String, Object> configs) {
         Map<String, Object> kafkaConfigs = new HashMap<>();
         Map<String, Object> d2kConfigs = D2kConsumerConfig.extractD2kConfigs(configs);
-        
+
         for (Map.Entry<String, Object> entry : configs.entrySet()) {
             String key = entry.getKey();
             if (!key.startsWith("d2k.")) {
@@ -791,7 +837,7 @@ public class DelayConsumerRunnable<K, V> implements Runnable {
                 kafkaConfigs.put(key, entry.getValue());
             }
         }
-        
+
         @SuppressWarnings("unchecked")
         Map<String, Object>[] result = new Map[2];
         result[0] = kafkaConfigs;
@@ -880,7 +926,7 @@ public class DelayConsumerRunnable<K, V> implements Runnable {
         log.info("Shutting down DelayConsumerRunnable");
         this.running = false;
         try {
-            kafkaConsumer.wakeup();
+            consumer.wakeup();
         } catch (Exception e) {
             log.warn("Error during consumer wakeup: {}", e.getMessage());
         }

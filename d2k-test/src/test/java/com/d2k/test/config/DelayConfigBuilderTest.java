@@ -1,7 +1,7 @@
 /**
  * @author xiajuan96
  */
-package com.d2k.test;
+package com.d2k.test.config;
 
 import com.d2k.config.DelayConfig;
 import com.d2k.config.DelayConfigBuilder;

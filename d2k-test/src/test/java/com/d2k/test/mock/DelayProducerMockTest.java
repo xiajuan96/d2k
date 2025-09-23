@@ -1,4 +1,4 @@
-package com.d2k.test;
+package com.d2k.test.mock;
 
 import com.d2k.producer.DelayProducer;
 import org.apache.kafka.clients.producer.MockProducer;
@@ -18,7 +18,7 @@ import static org.junit.Assert.*;
  * DelayProducer 单元测试 - 重构后的简化版本
  * @author xiajuan96
  */
-public class DelayProducerTest {
+public class DelayProducerMockTest {
 
     private MockProducer<String, String> mockProducer;
     private DelayProducer<String, String> delayProducer;

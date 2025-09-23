@@ -1,4 +1,4 @@
-package com.d2k.test;
+package com.d2k.test.mock;
 
 import com.d2k.consumer.DelayConsumerRunnable;
 import com.d2k.consumer.DelayItem;

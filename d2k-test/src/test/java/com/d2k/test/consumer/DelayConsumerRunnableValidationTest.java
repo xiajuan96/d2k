@@ -1,5 +1,6 @@
-package com.d2k.consumer;
+package com.d2k.test.consumer;
 
+import com.d2k.consumer.AsyncProcessingConfig;
 import com.d2k.consumer.DelayConsumerRunnable;
 import org.junit.Test;
 import org.junit.Before;

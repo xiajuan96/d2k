@@ -1,8 +1,10 @@
 /**
  * @author xiajuan96
  */
-package com.d2k.config;
+package com.d2k.test.config;
 
+import com.d2k.config.DelayConfig;
+import com.d2k.config.DelayConfigBuilder;
 import org.apache.kafka.common.TopicPartition;
 import org.junit.Test;
 import org.junit.Assert;
