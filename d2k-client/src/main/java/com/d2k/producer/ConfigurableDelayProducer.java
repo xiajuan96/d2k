@@ -11,7 +11,6 @@ import org.slf4j.LoggerFactory;
 
 import java.util.*;
 import java.util.concurrent.Future;
-import java.util.stream.Collectors;
 
 /**
  * 可配置的延迟消息生产者
@@ -109,7 +108,7 @@ public class ConfigurableDelayProducer<K, V> {
      * @return Future<RecordMetadata>
      * @throws IllegalArgumentException 如果topic没有配置或没有匹配延迟时间的分区
      */
-    public Future<RecordMetadata> sendWithDelayMs(String topic, K key, V value, long delayMs) {
+    public Future<RecordMetadata>   sendWithDelay(String topic, K key, V value, long delayMs) {
         // 获取所有匹配延迟时间的分区
         List<Integer> matchingPartitions = getPartitionsWithDelay(topic, delayMs);
         
@@ -136,8 +135,8 @@ public class ConfigurableDelayProducer<K, V> {
      * @return Future<RecordMetadata>
      * @throws IllegalArgumentException 如果topic没有配置或没有匹配延迟时间的分区
      */
-    public Future<RecordMetadata> sendWithDelayMs(String topic, V value, long delayMs) {
-        return sendWithDelayMs(topic, null, value, delayMs);
+    public Future<RecordMetadata> sendWithDelay(String topic, V value, long delayMs) {
+        return sendWithDelay(topic, null, value, delayMs);
     }
     
     /**

@@ -47,7 +47,7 @@ public class ConfigurableDelayProducerTest {
     @Test
     public void testSendToRandomPartitionWithKey() throws Exception {
         // 测试发送到延迟时间为1000ms的分区（应该从分区0和2中随机选择）
-        Future<RecordMetadata> future = configurableDelayProducer.sendWithDelayMs(
+        Future<RecordMetadata> future = configurableDelayProducer.sendWithDelay(
                 "test-topic", "test-key", "test-value", 1000L);
         
         assertNotNull(future);
@@ -71,7 +71,7 @@ public class ConfigurableDelayProducerTest {
     @Test
     public void testSendToRandomPartitionWithoutKey() throws Exception {
         // 测试发送到延迟时间为2000ms的分区（应该选择分区1）
-        Future<RecordMetadata> future = configurableDelayProducer.sendWithDelayMs(
+        Future<RecordMetadata> future = configurableDelayProducer.sendWithDelay(
                 "test-topic", "test-value", 2000L);
         
         assertNotNull(future);
@@ -92,7 +92,7 @@ public class ConfigurableDelayProducerTest {
     @Test
     public void testSendToRandomPartitionUniqueDelay() throws Exception {
         // 测试发送到延迟时间为3000ms的分区（应该选择分区3）
-        Future<RecordMetadata> future = configurableDelayProducer.sendWithDelayMs(
+        Future<RecordMetadata> future = configurableDelayProducer.sendWithDelay(
                 "test-topic", "test-key", "test-value", 3000L);
         
         assertNotNull(future);
@@ -111,14 +111,14 @@ public class ConfigurableDelayProducerTest {
     @Test(expected = IllegalArgumentException.class)
     public void testSendToRandomPartitionNoMatchingPartitions() {
         // 测试发送到没有配置的延迟时间（应该抛出异常）
-        configurableDelayProducer.sendWithDelayMs(
+        configurableDelayProducer.sendWithDelay(
                 "test-topic", "test-key", "test-value", 5000L);
     }
     
     @Test(expected = IllegalArgumentException.class)
     public void testSendToRandomPartitionNonExistentTopic() {
         // 测试发送到不存在的topic（应该抛出异常）
-        configurableDelayProducer.sendWithDelayMs(
+        configurableDelayProducer.sendWithDelay(
                 "non-existent-topic", "test-key", "test-value", 1000L);
     }
     
@@ -130,7 +130,7 @@ public class ConfigurableDelayProducerTest {
         boolean foundPartition2 = false;
         
         for (int i = 0; i < sendCount; i++) {
-            configurableDelayProducer.sendWithDelayMs(
+            configurableDelayProducer.sendWithDelay(
                     "test-topic", "key-" + i, "value-" + i, 1000L);
             
             ProducerRecord<String, String> record = mockProducer.history().get(i);
@@ -179,7 +179,7 @@ public class ConfigurableDelayProducerTest {
         // 测试发送到延迟时间为5000ms的消息（应该匹配topic级别配置）
         // 由于MockProducer没有真实的分区信息，这个测试主要验证逻辑不会抛出异常
         try {
-            Future<RecordMetadata> future = producer.sendWithDelayMs(
+            Future<RecordMetadata> future = producer.sendWithDelay(
                     "topic-with-default", "test-key", "test-value", 5000L);
             
             // 如果没有可用分区，应该抛出IllegalArgumentException

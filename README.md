@@ -6,57 +6,43 @@
 
 ## 什么是 D2K？
 
-D2K（Delay to Kafka）是一个专注于 **Kafka 延迟消息处理** 的轻量级 Java SDK。基于标准的生产者-消费者设计模式，D2K 的创新性主要体现在消费端实现的**双线程异步处理机制**：构建**双通道异步处理引擎**，在消费者端实现基于优先级队列的精确时间控制和并行消息处理，为基于 Kafka 的分布式系统提供高性能、高精度的延迟消息处理能力。
+D2K（Delay to Kafka）是一个专注于 **Kafka 延迟消息处理** 的轻量级 Java SDK。基于标准的生产者-消费者设计模式，D2K 的创新性主要体现在消费端实现的**双循环异步处理机制**：构建**双通道异步处理引擎**，在消费者端实现精确时间控制和并行消息处理，为基于 Kafka 的分布式系统提供高性能、高精度的延迟消息处理能力。
 
 ### 核心定位
 
 - **延迟消息处理利器**：专门解决 Kafka 生态中的延迟消息处理需求
 - **消费端延迟架构**：创新的消费端延迟处理模式，避免传统方案的复杂性
+- **零框架依赖**：纯 Java 实现，无 Spring 等框架依赖，可集成到任何 Java 项目
 - **企业级可靠性**：提供毫秒级精度控制和完整的一致性保障机制
 - **开箱即用**：简单的 API 设计，最小化集成成本
 
 ### 主要功能
-
-🚀 **延迟消息发送**：支持相对延迟时间和绝对时间两种发送模式  
+🚀 **延迟消息发送**：支持相对延迟时间和绝对时间两种发送模式   
 ⏰ **精确延迟消费**：毫秒级精度的延迟消息处理能力  
-🎯 **双模式处理**：同步和异步两种处理模式，适应不同性能需求  
 🔄 **智能流控**：内置背压控制和队列管理，防止系统过载  
 📊 **顺序性保障**：确保同一分区内消息的处理顺序  
-⚡ **高性能架构**：双线程异步设计，消息拉取与处理完全解耦
 
-## 为什么选择 D2K？
+### 主要特点
 
-### 🎯 技术优势对比
-
-| 特性 | D2K | 传统延迟队列 | Kafka 时间轮 | 数据库轮询 |
-|------|-----|-------------|-------------|------------|
-| **部署复杂度** | ⭐⭐⭐⭐⭐ 极简 | ⭐⭐ 复杂 | ⭐⭐⭐ 中等 | ⭐⭐⭐⭐ 简单 |
-| **精度控制** | ⭐⭐⭐⭐⭐ 毫秒级 | ⭐⭐⭐⭐ 秒级 | ⭐⭐⭐ 秒级 | ⭐⭐ 分钟级 |
-| **性能表现** | ⭐⭐⭐⭐⭐ 极高 | ⭐⭐⭐ 中等 | ⭐⭐⭐⭐ 高 | ⭐⭐ 低 |
-| **资源消耗** | ⭐⭐⭐⭐⭐ 极低 | ⭐⭐ 高 | ⭐⭐⭐ 中等 | ⭐⭐⭐ 中等 |
-| **扩展性** | ⭐⭐⭐⭐⭐ 优秀 | ⭐⭐⭐ 中等 | ⭐⭐⭐⭐ 良好 | ⭐⭐ 有限 |
-| **一致性保障** | ⭐⭐⭐⭐⭐ 强一致 | ⭐⭐⭐⭐ 最终一致 | ⭐⭐⭐ 中等 | ⭐⭐⭐⭐ 强一致 |
-
-### 🚀 核心技术亮点
-
-#### 1. 创新的消费端延迟架构
-- **零额外存储**：无需 Redis、数据库等外部存储，直接基于 Kafka 实现
-- **原生集成**：与现有 Kafka 基础设施无缝集成，无需额外部署
-- **简化运维**：减少系统组件，降低运维复杂度和故障点
+#### 1. 消费端双循环异步架构
+- **完全解耦设计**：消息拉取与延迟处理在独立线程中执行
+- **高性能队列**：基于 PriorityBlockingQueue 的无锁并发机制
+- **智能流控**：内置背压控制，防止内存溢出和系统过载
 
 #### 2. 毫秒级精度控制
 - **精确时间控制**：支持毫秒级延迟精度，满足高精度定时需求
 - **智能休眠算法**：自适应休眠策略（1ms-200ms），平衡精度与性能
 - **分段时间控制**：多级时间窗口，不同场景下的最优检查频率
 
-#### 3. 双线程异步架构
-- **完全解耦设计**：消息拉取与延迟处理在独立线程中执行
-- **高性能队列**：基于 PriorityBlockingQueue 的无锁并发机制
-- **智能流控**：内置背压控制，防止内存溢出和系统过载
+#### 3. 零额外依赖
+- **零额外存储**：无需 Redis、数据库等外部存储，直接基于 Kafka 实现
+- **原生集成**：与现有 Kafka 基础设施无缝集成，无需额外部署
+- **简化运维**：减少系统组件，降低运维复杂度和故障点
+- **零框架依赖**：无需 Spring 等框架，保持轻量级依赖
 
 #### 4. 企业级可靠性保障
 - **顺序性保证**：确保同一分区内消息按正确顺序处理
-- **一致性机制**：支持同步/异步两种模式的偏移量管理
+- **一致性机制**：支持同步/异步两种模式的消息处理方式
 - **故障恢复**：完整的消费者重平衡和优雅关闭机制
 
 ## 🔧 核心工作原理
@@ -67,7 +53,12 @@ D2K（Delay to Kafka）是一个专注于 **Kafka 延迟消息处理** 的轻量
 
 ### 消费端工作原理
 
-D2K 的消费端采用创新的 **双线程异步架构**，通过消费端延迟处理实现高性能的延迟消息处理：
+D2K 的消费端采用创新的 **双循环异步架构**，通过消费端延迟处理实现高性能的延迟消息处理：
+
+1. **双线程解耦**：消息拉取与延迟处理在不同线程中执行，互不阻塞
+2. **优先级队列**：基于到期时间自动排序，确保最早到期的消息优先处理
+3. **智能休眠**：根据消息到期时间动态调整检查频率，平衡精度与性能
+4. **一致性保障**：完整的偏移量管理机制，确保消息处理的可靠性
 
 ```mermaid
 flowchart TD
@@ -117,19 +108,12 @@ flowchart TD
     style Q fill:#ffeb3b
 ```
 
-#### 关键特性说明
-
-1. **双线程解耦**：消息拉取与延迟处理在不同线程中执行，互不阻塞
-2. **优先级队列**：基于到期时间自动排序，确保最早到期的消息优先处理
-3. **智能休眠**：根据消息到期时间动态调整检查频率，平衡精度与性能
-4. **一致性保障**：完整的偏移量管理机制，确保消息处理的可靠性
-
 ## 🚀 快速开始
 
 ### 系统要求
 
 - **Java版本**：JDK 8 或更高版本
-- **Kafka版本**：兼容 Apache Kafka 2.0+ 
+- **kafka-client版本**：兼容 Apache Kafka 2.4.0+ 
 - **依赖管理**：Maven 3.6+ 或 Gradle 6.0+
 
 ### 添加依赖
@@ -175,11 +159,11 @@ public class DelayProducerExample {
         
         try {
             // 发送延迟消息（5秒后消费）
-            producer.sendDelayMessage("my-topic", "order-123", "订单处理", 5000L);
+            producer.sendWithDelay("my-topic", "order-123", "订单处理", 5000L);
             
             // 发送定时消息（指定具体时间）
             long deliverAt = System.currentTimeMillis() + 30000; // 30秒后
-            producer.sendTimedMessage("my-topic", "reminder-456", "提醒消息", deliverAt);
+            producer.sendDeliverAt("my-topic", "reminder-456", "提醒消息", deliverAt);
             
             System.out.println("延迟消息发送成功！");
         } finally {
@@ -194,6 +178,7 @@ public class DelayProducerExample {
 ```java
 import com.d2k.consumer.DelayConsumerContainer;
 import com.d2k.consumer.DelayItemHandler;
+import com.d2k.consumer.AsyncProcessingConfig;
 import java.util.*;
 
 public class DelayConsumerExample {
@@ -204,7 +189,10 @@ public class DelayConsumerExample {
         consumerProps.put("group.id", "my-consumer-group");
         consumerProps.put("key.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
         consumerProps.put("value.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
-        consumerProps.put("auto.offset.reset", "earliest");
+        
+        // D2K 专有配置
+        consumerProps.put("d2k.loop.total.ms", 200L);
+        consumerProps.put("d2k.queue.capacity", 1000);
         
         // 创建消息处理器
         DelayItemHandler<String, String> handler = item -> {
@@ -215,7 +203,7 @@ public class DelayConsumerExample {
             // 在这里添加你的业务逻辑
             // 例如：发送邮件、更新订单状态、执行定时任务等
         };
-        
+    
         // 创建延迟消息消费者容器
         DelayConsumerContainer<String, String> container = new DelayConsumerContainer<>(
             2, // 2个消费线程
@@ -248,9 +236,19 @@ public class DelayConsumerExample {
 
 根据你的需求，选择合适的文档：
 
-- **🚀 [高级使用指南](ADVANCED_USAGE.md)**：详细配置、性能调优、最佳实践
-- **👨‍💻 [开发者指南](DEVELOPER_GUIDE.md)**：API文档、技术实现、开发规范
-- **❓ [常见问题](FAQ.md)**：故障排除、问题解答
+### 快速入门
+- **🚀 [快速开始](#快速开始)** - 基础使用示例
+- **🚀 [高级使用指南](ADVANCED_USAGE.md)** - 详细配置、性能调优、最佳实践
+- **❓ [常见问题](FAQ.md)** - 故障排除、问题解答
+
+### 开发指南
+- **👨‍💻 [开发者指南](DEVELOPER_GUIDE.md)** - API文档、技术实现、开发规范
+- **⚙️ [配置分离指南](CONFIG_SEPARATION_GUIDE.md)** - D2K配置机制详解
+
+### 运维指南
+- **⚡ [性能调优指南](PERFORMANCE_TUNING.md)** - 性能优化策略
+
+> **📊 监控功能说明**：当前版本暂不提供监控支持功能，监控能力已规划为未来版本的开发计划。如需监控，建议使用标准的JVM监控工具和Kafka客户端自带的监控指标。
 
 ## 🤝 贡献指南
 
@@ -267,12 +265,7 @@ public class DelayConsumerExample {
 
 本项目采用 [GNU Lesser General Public License v3.0 (LGPL-3.0)](https://www.gnu.org/licenses/lgpl-3.0.html) 开源许可证。
 
-LGPL-3.0 是一个宽松的开源许可证，允许您：
-- 自由使用、修改和分发本软件
-- 在商业项目中使用本软件
-- 将本软件作为库链接到您的应用程序中
-
-如果您修改了本软件的源代码并分发，则必须在相同的 LGPL-3.0 许可证下提供修改后的源代码。
+详细许可证条款和使用条件请参阅 [LICENSE](LICENSE) 文件。
 
 ## 👨‍💻 作者
 
