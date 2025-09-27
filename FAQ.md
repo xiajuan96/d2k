@@ -32,8 +32,8 @@
 ```java
 // 性能优化配置示例
 Map<String, Object> configs = new HashMap<>();
-configs.put("d2k.loop.total.ms", 100L);      // 减少轮询间隔
-configs.put("d2k.queue.capacity", 5000);     // 增加队列容量
+configs.put(D2kConsumerConfig.LOOP_TOTAL_MS, 100L);      // 减少轮询间隔
+configs.put(D2kConsumerConfig.QUEUE_CAPACITY, 5000);     // 增加队列容量
 ```
 
 ### 内存使用过高如何优化？
@@ -54,7 +54,7 @@ configs.put("d2k.queue.capacity", 5000);     // 增加队列容量
 
 ```java
 // 内存优化配置
-configs.put("d2k.queue.capacity", 1000);     // 减少队列容量
+configs.put(D2kConsumerConfig.QUEUE_CAPACITY, 1000);     // 减少队列容量
 
 // JVM参数建议
 // -Xmx2g -Xms2g -XX:+UseG1GC -XX:+HeapDumpOnOutOfMemoryError
@@ -79,6 +79,7 @@ configs.put("d2k.queue.capacity", 1000);     // 减少队列容量
 ```java
 // 消费者可靠性配置
 Map<String, Object> consumerConfigs = new HashMap<>();
+consumerConfigs.put("enable.auto.commit", false);  // D2K强制禁用自动提交
 
 // 可靠的消息处理器
 public class ReliableHandler implements DelayItemHandler<String, String> {
@@ -107,6 +108,9 @@ Map<String, Object> producerConfigs = new HashMap<>();
 producerConfigs.put("acks", "all");                    // 等待所有副本确认
 producerConfigs.put("retries", Integer.MAX_VALUE);      // 无限重试
 producerConfigs.put("max.in.flight.requests.per.connection", 1); // 保证顺序
+
+// 创建生产者
+DelayProducer<String, String> producer = new DelayProducer<>(producerConfigs);
 ```
 
 ## 配置管理
@@ -134,9 +138,8 @@ allConfigs.put("key.deserializer", StringDeserializer.class.getName());
 allConfigs.put("value.deserializer", StringDeserializer.class.getName());
 
 // D2K专有配置（注意数据类型）
-allConfigs.put("d2k.loop.total.ms", 200L);           // Long类型
-allConfigs.put("d2k.queue.capacity", 1000);          // Integer类型
-allConfigs.put("d2k.async.enabled", true);           // Boolean类型
+allConfigs.put(D2kConsumerConfig.LOOP_TOTAL_MS, 200L);           // Long类型
+allConfigs.put(D2kConsumerConfig.QUEUE_CAPACITY, 1000);          // Integer类型
 
 // 创建消费者时，D2K会自动分离配置
 DelayConsumerContainer<String, String> container = new DelayConsumerContainer<>(
@@ -145,9 +148,14 @@ DelayConsumerContainer<String, String> container = new DelayConsumerContainer<>(
 ```
 
 **配置参数说明：**
-- `d2k.loop.total.ms`：轮询间隔时间（毫秒），类型为Long
-- `d2k.queue.capacity`：队列容量，类型为Integer
-- `d2k.async.enabled`：是否启用异步处理，类型为Boolean
+- `d2k.loop.total.ms`：轮询间隔时间（毫秒），类型为Long，默认值200ms
+- `d2k.queue.capacity`：队列容量，类型为Integer，默认值1000
+
+**配置验证：**
+```java
+// 使用D2kConsumerConfig进行配置验证
+D2kConsumerConfig.validateConfigs(allConfigs);
+```
 
 ## 异步处理
 
@@ -169,8 +177,11 @@ DelayConsumerContainer<String, String> container = new DelayConsumerContainer<>(
 - 简单的数据转换或验证
 
 ```java
-// 同步处理配置
-AsyncProcessingConfig syncConfig = AsyncProcessingConfig.createSyncConfig();
+// 同步处理配置（不使用异步处理）
+AsyncProcessingConfig syncConfig = null;  // 传入null表示同步处理
+
+// 或者创建同步配置
+AsyncProcessingConfig syncConfig = new AsyncProcessingConfig(1, 1, 1);
 ```
 
 **异步模式适用场景：**
@@ -181,7 +192,7 @@ AsyncProcessingConfig syncConfig = AsyncProcessingConfig.createSyncConfig();
 
 ```java
 // 异步处理配置
-AsyncProcessingConfig asyncConfig = AsyncProcessingConfig.createAsyncConfig(
+AsyncProcessingConfig asyncConfig = new AsyncProcessingConfig(
     10,    // 核心线程数
     50,    // 最大线程数
     1000   // 队列长度
@@ -190,7 +201,7 @@ AsyncProcessingConfig asyncConfig = AsyncProcessingConfig.createAsyncConfig(
 // 根据CPU核心数配置线程池
 int coreThreads = Runtime.getRuntime().availableProcessors();
 int maxThreads = coreThreads * 2;
-AsyncProcessingConfig config = AsyncProcessingConfig.createAsyncConfig(
+AsyncProcessingConfig config = new AsyncProcessingConfig(
     coreThreads, maxThreads, 2000
 );
 ```
@@ -301,8 +312,11 @@ mvn test
 ```java
 // 检查新版本是否有新的配置选项
 Map<String, Object> configs = new HashMap<>();
-// 添加新版本推荐的配置
-configs.put("d2k.new.feature.enabled", true);
+// 使用D2kConsumerConfig常量确保配置正确
+configs.put(D2kConsumerConfig.LOOP_TOTAL_MS, 200L);
+configs.put(D2kConsumerConfig.QUEUE_CAPACITY, 1000);
+// 验证配置
+D2kConsumerConfig.validateConfigs(configs);
 ```
 
 3. **灰度发布**
@@ -334,11 +348,25 @@ echo "systemctl restart d2k-service" >> rollback.sh
 
 ---
 
+## 相关文档
+
+### 使用指南
+- [README](./README.md) - 项目概览和快速开始
+- [高级用法](./ADVANCED_USAGE.md) - 详细配置和最佳实践
+- [配置分离指南](./CONFIG_SEPARATION_GUIDE.md) - D2K配置机制详解
+
+### 开发指南
+- [开发指南](./DEVELOPER_GUIDE.md) - 完整API文档和开发规范
+
+### 运维指南
+- [性能调优指南](./PERFORMANCE_TUNING.md) - 系统性能优化策略
+- **监控功能说明**：当前版本暂不提供监控支持功能，监控能力已规划为未来版本的开发计划
+
 ## 获取帮助
 
 如果本FAQ未能解决您的问题，可以通过以下方式获取帮助：
 
-1. **查看文档**：阅读 [ADVANCED_USAGE.md](./ADVANCED_USAGE.md) 获取更详细的使用指南
+1. **查看文档**：参考上述相关文档获取更详细的使用指南
 2. **提交Issue**：在项目仓库中提交问题报告
 3. **社区讨论**：参与社区讨论，与其他用户交流经验
 

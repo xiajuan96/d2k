@@ -8,11 +8,7 @@
 - [配置延迟策略](#配置延迟策略)
 - [异步处理配置](#异步处理配置)
 - [配置分离示例](#配置分离示例)
-- [异步消息处理](#异步消息处理)
-- [自定义序列化器](#自定义序列化器)
-- [批量发送延迟消息](#批量发送延迟消息)
 - [最佳实践](#最佳实践)
-- [常见问题解答](#常见问题解答)
 - [API 接口文档](#api-接口文档)
 
 ## 自定义消息处理器
@@ -151,62 +147,6 @@ DelayConsumerRunnable<String, String> runnable = new DelayConsumerRunnable<>(
 );
 ```
 
-## 异步消息处理
-
-实现异步消息处理来提高性能：
-
-```java
-// 创建支持异步处理的消息处理器
-DelayItemHandler<String, String> asyncHandler = item -> {
-    // 异步处理消息
-    CompletableFuture.runAsync(() -> {
-        try {
-            // 模拟耗时操作
-            Thread.sleep(100);
-            System.out.println("异步处理完成: " + item.getRecord().value());
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-        }
-    });
-};
-```
-
-## 自定义序列化器
-
-使用自定义序列化器处理复杂对象：
-
-```java
-// 使用JSON序列化器处理复杂对象
-DelayConsumerContainer<String, MyObject> container = new DelayConsumerContainer<>(
-    threadCount,
-    consumerProps,
-    topics,
-    handler
-);
-```
-
-## 批量发送延迟消息
-
-批量发送多个延迟消息：
-
-```java
-// 批量发送多个延迟消息
-DelayProducer<String, String> producer = new DelayProducer<>(producerProps);
-
-List<ProducerRecord<String, String>> records = Arrays.asList(
-    new ProducerRecord<>("topic1", "key1", "value1"),
-    new ProducerRecord<>("topic1", "key2", "value2"),
-    new ProducerRecord<>("topic1", "key3", "value3")
-);
-
-long delayMs = 5000; // 5秒延迟
-for (ProducerRecord<String, String> record : records) {
-    producer.sendWithDelay(record.topic(), record.key(), record.value(), delayMs);
-}
-
-producer.close();
-```
-
 ## 最佳实践
 
 ### 1. 合理设置延迟时间
@@ -253,58 +193,7 @@ AsyncProcessingConfig lowLatencyConfig = AsyncProcessingConfig.createSyncConfig(
 AsyncProcessingConfig balancedConfig = AsyncProcessingConfig.createAsyncConfig(4, 8, 200);
 ```
 
-### 4. 错误处理和重试机制
-
-```java
-public class RobustDelayItemHandler implements DelayItemHandler<String, String> {
-    private static final Logger log = LoggerFactory.getLogger(RobustDelayItemHandler.class);
-    private static final int MAX_RETRIES = 3;
-    private static final long RETRY_DELAY_MS = 1000;
-    
-    @Override
-    public void process(DelayItem<String, String> item) {
-        int retries = 0;
-        Exception lastException = null;
-        
-        while (retries <= MAX_RETRIES) {
-            try {
-                processMessage(item.getRecord());
-                return; // 成功处理
-            } catch (Exception e) {
-                lastException = e;
-                retries++;
-                
-                if (retries <= MAX_RETRIES) {
-                    log.warn("Processing failed, retry {}/{}: {}", 
-                            retries, MAX_RETRIES, e.getMessage());
-                    try {
-                        Thread.sleep(RETRY_DELAY_MS * retries); // 指数退避
-                    } catch (InterruptedException ie) {
-                        Thread.currentThread().interrupt();
-                        return;
-                    }
-                }
-            }
-        }
-        
-        // 所有重试都失败
-        handleFailedMessage(item, lastException);
-    }
-    
-    private void processMessage(ConsumerRecord<String, String> record) {
-        // 实际业务处理逻辑
-    }
-    
-    private void handleFailedMessage(DelayItem<String, String> item, Exception e) {
-        // 记录到死信队列或错误日志
-        log.error("Message processing failed after {} retries: topic={}, partition={}, offset={}", 
-                 MAX_RETRIES, item.getRecord().topic(), 
-                 item.getRecord().partition(), item.getRecord().offset(), e);
-    }
-}
-```
-
-### 5. 延迟配置策略
+### 4. 延迟配置策略
 
 ```java
 // 按业务场景配置延迟策略
@@ -321,41 +210,7 @@ DelayConfig businessDelayConfig = new DelayConfigBuilder()
     .build();
 ```
 
-### 6. 监控和指标
-
-```java
-// 自定义处理器，添加监控指标
-public class MonitoredDelayItemHandler implements DelayItemHandler<String, String> {
-    private final DelayItemHandler<String, String> delegate;
-    private final AtomicLong processedCount = new AtomicLong(0);
-    private final AtomicLong errorCount = new AtomicLong(0);
-    
-    @Override
-    public void process(DelayItem<String, String> item) {
-        long startTime = System.currentTimeMillis();
-        try {
-            delegate.process(item);
-            processedCount.incrementAndGet();
-        } catch (Exception e) {
-            errorCount.incrementAndGet();
-            throw e;
-        } finally {
-            long processingTime = System.currentTimeMillis() - startTime;
-            // 记录处理时间指标
-            recordProcessingTime(processingTime);
-        }
-    }
-    
-    public long getProcessedCount() { return processedCount.get(); }
-    public long getErrorCount() { return errorCount.get(); }
-    
-    private void recordProcessingTime(long processingTime) {
-        // 实现指标记录逻辑
-    }
-}
-```
-
-### 7. 资源管理和优雅关闭
+### 5. 资源管理和优雅关闭
 
 ```java
 public class DelayMessageService {
@@ -385,17 +240,19 @@ public class DelayMessageService {
 }
 ```
 
-## 常见问题解答
+## 相关文档
 
-详细的常见问题解答请参考：[FAQ.md](./FAQ.md)
+### 开发相关
+- [开发指南](./DEVELOPER_GUIDE.md) - 完整API文档和开发规范
+- [配置分离指南](./CONFIG_SEPARATION_GUIDE.md) - D2K配置机制深入解析
 
-该文档包含以下主要内容：
-- **性能优化**：消息延迟、内存使用等性能相关问题
-- **可靠性保障**：消息不丢失、异常处理等可靠性配置
-- **配置管理**：D2K专有配置和Kafka原生配置的正确使用
-- **异步处理**：同步和异步处理模式的选择建议
-- **监控运维**：应用状态监控和告警配置
-- **版本升级**：安全升级和回滚策略
+### 运维相关
+- [性能调优指南](./PERFORMANCE_TUNING.md) - 系统性能优化策略
+- **监控功能说明**：当前版本暂不提供监控支持功能，监控能力已规划为未来版本的开发计划
+
+### 问题解决
+- [常见问题](./FAQ.md) - 常见问题排查和解决方案
+- [README](./README.md) - 项目概览和快速开始
 
 ## API 接口文档
 
@@ -450,9 +307,6 @@ ConfigurableDelayProducer(Producer<K, V> producer, DelayConfig delayConfig)
 Future<RecordMetadata> send(String topic, K key, V value)
 Future<RecordMetadata> send(String topic, int partition, K key, V value)
 
-// 发送消息到指定分区
-Future<RecordMetadata> send(ProducerRecord<K, V> record)
-
 // 关闭生产者
 void close()
 ```
@@ -491,19 +345,6 @@ void stop()
 ### DelayConfigBuilder
 
 延迟配置构建器，用于创建复杂的延迟配置。
-
-#### 主要方法
-
-```java
-// 设置主题级别的默认延迟时间
-DelayConfigBuilder withTopicDelay(String topic, long delayMs)
-
-// 设置主题分区级别的默认延迟时间
-DelayConfigBuilder withTopicPartitionDelay(String topic, int partition, long delayMs)
-
-// 构建配置对象
-DelayConfig build()
-```
 
 ### AsyncProcessingConfig
 
